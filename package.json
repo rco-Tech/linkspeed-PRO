@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "LinkSpeed Pro — PWA for USB Cable Negotiated Speed & Hardware Inspection",
   "main": "server.js",
+  "bin": {
+    "linkspeed": "./server.js"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
