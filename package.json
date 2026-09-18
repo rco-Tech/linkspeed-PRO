@@ -1,7 +1,7 @@
 {
   "name": "linkspeed-pro",
   "productName": "LinkSpeed Pro",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "LinkSpeed Pro — 1-Click Desktop App & PWA for USB Cable Negotiated Speed & Hardware Inspection",
   "main": "electron-main.js",
   "bin": {

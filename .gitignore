@@ -34,7 +34,6 @@ Thumbs.db
 
 # Temporary & Build artifacts
 dist/
-build/
 .cache/
 .tmp/
 tmp/
