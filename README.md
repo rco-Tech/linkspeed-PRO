@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/icons/icon-192.png" width="128" height="128" alt="LinkSpeed Pro Logo" />
+  <img src="public/icons/icon-512.png" width="160" height="160" alt="LinkSpeed Pro Logo" />
 </p>
 
 <h1 align="center">LinkSpeed Pro</h1>
