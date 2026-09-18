@@ -69,6 +69,11 @@
           <span class="status-text" id="connectionStatusText">LIVE DAEMON</span>
         </div>
 
+        <!-- Start Server Action Button (visible when offline) -->
+        <button class="btn btn-warning btn-sm" id="btnHeaderStartServer" style="display: none;" title="Open terminal command to launch local engine">
+          ⚡ Start Server
+        </button>
+
         <!-- Audio toggle -->
         <button class="icon-btn" id="btnAudioToggle" title="Toggle audio chime on device connect/disconnect" aria-label="Toggle sound">
           <span id="audioIcon">🔔</span>
@@ -122,6 +127,18 @@
       </div>
     </div>
   </header>
+
+  <!-- Offline Warning Banner -->
+  <div class="offline-alert-bar" id="offlineBanner" style="display: none;">
+    <div class="o-bar-left">
+      <span class="o-pulse-dot"></span>
+      <span class="o-text"><strong>Local Daemon Disconnected:</strong> Start the engine in your terminal to inspect physical USB ports.</span>
+    </div>
+    <div class="o-bar-right">
+      <button class="btn btn-secondary btn-sm" id="btnQuickCopy">📋 Copy Command</button>
+      <button class="btn btn-primary btn-sm" id="btnOpenServerModal">⚡ Start Server</button>
+    </div>
+  </div>
 
   <!-- Main App Shell -->
   <main class="main-container">
@@ -594,6 +611,65 @@
       <button class="btn btn-secondary w-full" id="btnCopyJson">Copy Full JSON Specs</button>
     </div>
   </aside>
+
+  <!-- Start Server Modal Backdrop & Dialog -->
+  <div class="modal-backdrop" id="serverModalBackdrop" style="display: none;">
+    <div class="server-modal">
+      <div class="sm-header">
+        <div class="sm-title-wrap">
+          <div class="sm-icon">⚡</div>
+          <div>
+            <h3>Start LinkSpeed Local Engine</h3>
+            <p>Required to inspect physical USB &amp; Thunderbolt hardware links</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseServerModal" aria-label="Close dialog">✕</button>
+      </div>
+
+      <div class="sm-body">
+        <div class="sm-card">
+          <div class="sm-card-label">OPTION 1 · START IN TERMINAL (RECOMMENDED)</div>
+          <div class="code-box">
+            <code id="codeTerminal">cd /home/robert/Projects/active-link-speed &amp;&amp; ./start.sh</code>
+            <button class="btn-copy" id="btnCopyTerminal" title="Copy to clipboard">📋 Copy</button>
+          </div>
+          <div class="sm-card-actions">
+            <button class="btn btn-secondary btn-sm" id="btnDownloadLauncher">
+              📥 Download 1-Click Script (start-linkspeed.command)
+            </button>
+          </div>
+          <small class="sm-hint">Run this in any terminal or IDE, or double-click the downloaded script to launch Terminal.app. LinkSpeed Pro will automatically detect the server and connect.</small>
+        </div>
+
+        <div class="sm-card">
+          <div class="sm-card-label">OPTION 2 · 1-LINE NPX LAUNCHER (ZERO SETUP)</div>
+          <div class="code-box">
+            <code id="codeNpx">npx github:rco-Tech/linkspeed-PRO</code>
+            <button class="btn-copy" id="btnCopyNpx" title="Copy to clipboard">📋 Copy</button>
+          </div>
+          <small class="sm-hint">Runs on any Linux or macOS machine with Node.js installed without manual git cloning.</small>
+        </div>
+
+        <div class="sm-card">
+          <div class="sm-card-label">OPTION 3 · PERSISTENT BACKGROUND SERVICE</div>
+          <div class="code-box">
+            <code id="codeBg">nohup node /home/robert/Projects/active-link-speed/server.js &gt; /dev/null 2&gt;&amp;1 &amp;</code>
+            <button class="btn-copy" id="btnCopyBg" title="Copy to clipboard">📋 Copy</button>
+          </div>
+          <small class="sm-hint">Keeps the daemon running quietly in the background so LinkSpeed Pro is always live.</small>
+        </div>
+
+        <div class="sm-status-row">
+          <div class="sm-pulse-dot"></div>
+          <span id="smStatusMsg">Listening for server on http://localhost:4321 ... (auto-closes on connection)</span>
+        </div>
+      </div>
+
+      <div class="sm-footer">
+        <button class="btn btn-secondary" id="btnDismissServerModal">Continue in Offline / Simulator Mode</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Live Toast Notification Container -->
   <div class="toast-container" id="toastContainer"></div>

@@ -192,7 +192,24 @@
     btnCopyJson: document.getElementById('btnCopyJson'),
 
     // Toast
-    toastContainer: document.getElementById('toastContainer')
+    toastContainer: document.getElementById('toastContainer'),
+
+    // Server Launcher & Offline controls
+    btnHeaderStartServer: document.getElementById('btnHeaderStartServer'),
+    offlineBanner: document.getElementById('offlineBanner'),
+    btnQuickCopy: document.getElementById('btnQuickCopy'),
+    btnOpenServerModal: document.getElementById('btnOpenServerModal'),
+    serverModalBackdrop: document.getElementById('serverModalBackdrop'),
+    btnCloseServerModal: document.getElementById('btnCloseServerModal'),
+    btnDismissServerModal: document.getElementById('btnDismissServerModal'),
+    btnCopyTerminal: document.getElementById('btnCopyTerminal'),
+    btnCopyNpx: document.getElementById('btnCopyNpx'),
+    btnCopyBg: document.getElementById('btnCopyBg'),
+    btnDownloadLauncher: document.getElementById('btnDownloadLauncher'),
+    codeTerminal: document.getElementById('codeTerminal'),
+    codeNpx: document.getElementById('codeNpx'),
+    codeBg: document.getElementById('codeBg'),
+    smStatusMsg: document.getElementById('smStatusMsg')
   };
 
   // -------------------------------------------------------------
@@ -206,6 +223,7 @@
     setupSimulator();
     setupDrawer();
     setupWebUsbLab();
+    setupServerModal();
     connectSseStream();
   }
 
@@ -405,6 +423,144 @@
   }
 
   // -------------------------------------------------------------
+  // Server Launcher Modal & Offline Handlers
+  // -------------------------------------------------------------
+  function openServerModal() {
+    if (el.serverModalBackdrop) {
+      el.serverModalBackdrop.style.display = 'flex';
+      if (el.smStatusMsg) {
+        el.smStatusMsg.textContent = 'Listening for server on http://localhost:4321 ... (auto-closes on connection)';
+      }
+    }
+  }
+
+  function closeServerModal() {
+    if (el.serverModalBackdrop) {
+      el.serverModalBackdrop.style.display = 'none';
+    }
+  }
+
+  function setupServerModal() {
+    // Open modal triggers
+    if (el.btnOpenServerModal) {
+      el.btnOpenServerModal.addEventListener('click', openServerModal);
+    }
+    if (el.btnHeaderStartServer) {
+      el.btnHeaderStartServer.addEventListener('click', openServerModal);
+    }
+    if (el.connectionStatus) {
+      el.connectionStatus.addEventListener('click', () => {
+        if (el.connectionStatus.classList.contains('clickable') || el.connectionStatus.classList.contains('disconnected')) {
+          openServerModal();
+        }
+      });
+    }
+
+    // Close modal triggers
+    if (el.btnCloseServerModal) {
+      el.btnCloseServerModal.addEventListener('click', closeServerModal);
+    }
+    if (el.btnDismissServerModal) {
+      el.btnDismissServerModal.addEventListener('click', closeServerModal);
+    }
+    if (el.serverModalBackdrop) {
+      el.serverModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === el.serverModalBackdrop) {
+          closeServerModal();
+        }
+      });
+    }
+
+    // Escape key closes modal
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && el.serverModalBackdrop && el.serverModalBackdrop.style.display !== 'none') {
+        closeServerModal();
+      }
+    });
+
+    // Copy helper with feedback and fallback
+    function copyText(text, button, successMsg) {
+      if (!button) return;
+      const originalText = button.innerHTML;
+      const doSuccess = () => {
+        button.innerHTML = '✓ Copied!';
+        button.classList.add('copied');
+        showToast(successMsg, 'add');
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(doSuccess).catch(() => fallbackCopy(text, doSuccess));
+      } else {
+        fallbackCopy(text, doSuccess);
+      }
+    }
+
+    function fallbackCopy(text, cb) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        cb();
+      } catch (err) {
+        showToast('Please copy command manually from dialog', 'remove');
+      }
+      document.body.removeChild(ta);
+    }
+
+    const startCmd = el.codeTerminal ? el.codeTerminal.innerText.trim() : 'cd /home/robert/Projects/active-link-speed && ./start.sh';
+    const npxCmd = el.codeNpx ? el.codeNpx.innerText.trim() : 'npx github:rco-Tech/linkspeed-PRO';
+    const bgCmd = el.codeBg ? el.codeBg.innerText.trim() : 'nohup node /home/robert/Projects/active-link-speed/server.js > /dev/null 2>&1 &';
+
+    if (el.btnQuickCopy) {
+      el.btnQuickCopy.addEventListener('click', () => {
+        copyText(startCmd, el.btnQuickCopy, 'Startup command copied to clipboard!');
+      });
+    }
+
+    if (el.btnCopyTerminal) {
+      el.btnCopyTerminal.addEventListener('click', () => {
+        copyText(startCmd, el.btnCopyTerminal, 'Terminal startup command copied!');
+      });
+    }
+
+    if (el.btnCopyNpx) {
+      el.btnCopyNpx.addEventListener('click', () => {
+        copyText(npxCmd, el.btnCopyNpx, 'npx launch command copied!');
+      });
+    }
+
+    if (el.btnCopyBg) {
+      el.btnCopyBg.addEventListener('click', () => {
+        copyText(bgCmd, el.btnCopyBg, 'Background daemon command copied!');
+      });
+    }
+
+    if (el.btnDownloadLauncher) {
+      el.btnDownloadLauncher.addEventListener('click', () => {
+        const script = `#!/bin/bash\n# LinkSpeed Pro Auto-Launcher\ncd "/home/robert/Projects/active-link-speed" || cd "\$(dirname "\$0")"\necho "Starting LinkSpeed Pro Daemon on http://localhost:4321 ..."\n./start.sh || node server.js\n`;
+        const blob = new Blob([script], { type: 'application/x-sh' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'start-linkspeed.command';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Downloaded start-linkspeed.command! Double-click to run in Terminal.', 'add');
+      });
+    }
+  }
+
+  // -------------------------------------------------------------
   // Real-Time Server-Sent Events (SSE) Client
   // -------------------------------------------------------------
   function connectSseStream() {
@@ -420,6 +576,20 @@
     sseEventSource.onopen = () => {
       el.connectionStatus.className = 'status-pill connected';
       el.connectionStatusText.textContent = 'LIVE DAEMON';
+      el.connectionStatus.classList.remove('clickable');
+      el.connectionStatus.title = 'Real-time Sub-second Hotplug Watcher Active';
+      if (el.offlineBanner) el.offlineBanner.style.display = 'none';
+      if (el.btnHeaderStartServer) el.btnHeaderStartServer.style.display = 'none';
+
+      if (el.serverModalBackdrop && el.serverModalBackdrop.style.display !== 'none') {
+        if (el.smStatusMsg) {
+          el.smStatusMsg.innerHTML = '<span style="color:var(--c-green); font-weight:bold;">🟢 Daemon Connected Successfully! Closing...</span>';
+        }
+        playChime('connect');
+        setTimeout(() => {
+          closeServerModal();
+        }, 1100);
+      }
     };
 
     sseEventSource.addEventListener('initial-state', (e) => {
@@ -547,8 +717,11 @@
     });
 
     sseEventSource.onerror = () => {
-      el.connectionStatus.className = 'status-pill disconnected';
-      el.connectionStatusText.textContent = 'OFFLINE (RETRYING)';
+      el.connectionStatus.className = 'status-pill disconnected clickable';
+      el.connectionStatusText.textContent = 'OFFLINE · START SERVER ⚡';
+      el.connectionStatus.title = 'Click to view server start commands & options';
+      if (el.offlineBanner) el.offlineBanner.style.display = 'flex';
+      if (el.btnHeaderStartServer) el.btnHeaderStartServer.style.display = 'inline-flex';
       setTimeout(connectSseStream, 3000);
     };
   }
