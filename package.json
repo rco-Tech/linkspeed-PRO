@@ -1,20 +1,21 @@
 {
   "name": "linkspeed-pro",
   "productName": "LinkSpeed Pro",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "LinkSpeed Pro — 1-Click Desktop App & PWA for USB Cable Negotiated Speed & Hardware Inspection",
   "main": "electron-main.js",
   "bin": {
-    "linkspeed": "./server.js"
+    "linkspeed": "server.js"
   },
   "scripts": {
     "start": "node server.js",
     "desktop": "electron .",
-    "dev": "node --watch server.js",
-    "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux",
-    "dist:win": "electron-builder --win"
+    "desktop:mac": "electron .",
+    "dev": "node server.js",
+    "dist": "electron-builder -p never",
+    "dist:mac": "electron-builder --mac -p never",
+    "dist:linux": "electron-builder --linux -p never",
+    "dist:win": "electron-builder --win -p never"
   },
   "keywords": [
     "usb",
@@ -56,7 +57,7 @@
           "arch": ["arm64", "x64"]
         }
       ],
-      "icon": "public/icons/icon-512.png",
+      "icon": "public/icons/icon.icns",
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false
