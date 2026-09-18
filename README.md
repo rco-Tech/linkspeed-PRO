@@ -1,18 +1,18 @@
 <p align="center">
-  <img src="public/icons/icon-512.png" width="160" height="160" alt="LinkSpeed Pro Logo" />
+  <img src="public/icons/logo_3.png" width="160" height="160" alt="LinkSpeed Pro Logo" style="border-radius: 28px; box-shadow: 0 8px 32px rgba(0,240,255,0.25);" />
 </p>
 
 <h1 align="center">LinkSpeed Pro</h1>
 
 <p align="center">
-  <strong>USB Cable Negotiated Speed &amp; Hardware Link Inspector (PWA)</strong><br />
+  <strong>USB Cable Negotiated Speed &amp; Hardware Link Inspector (Desktop &amp; PWA)</strong><br />
   Inspect physical USB negotiated link speeds, detect charge-only cable bottlenecks, and explore complete hardware topology trees just like macOS System Report.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Link%20Speed-Up%20to%2040%20Gb%2Fs-00f0ff?style=flat-square" alt="Link Speed" />
+  <img src="https://img.shields.io/badge/Desktop%20App-macOS%20%7C%20Linux-3b82f6?style=flat-square" alt="Desktop App" />
   <img src="https://img.shields.io/badge/PWA-Installable-10b981?style=flat-square" alt="PWA" />
-  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-3b82f6?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=flat-square" alt="License" />
 </p>
 
@@ -23,10 +23,31 @@
 LinkSpeed Pro supports multiple ways to run, from 1-click standalone desktop apps (zero terminal needed) to developer CLI tools:
 
 ### 📦 1. 1-Click Desktop App (Zero Terminal Needed)
-Download the standalone application from **[GitHub Releases](https://github.com/rco-Tech/linkspeed-PRO/releases)**:
-- **macOS**: Download `LinkSpeed-Pro.dmg`, drag to `Applications`, and launch from your Launchpad or Dock.
-- **Linux**: Download `LinkSpeed-Pro.AppImage` or `.deb`.
-- *No terminal commands, no manual Node.js installation required—everything is self-contained!*
+
+Download the latest release for your operating system from **[GitHub Releases](https://github.com/rco-Tech/linkspeed-PRO/releases)**:
+
+#### 🍏 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
+1. Download **`LinkSpeed-Pro-*-arm64-mac.zip`** (for Apple Silicon) or **`LinkSpeed-Pro-*-mac.zip`** (for Intel / universal DMG).
+2. Unzip and drag **`LinkSpeed Pro.app`** into your `/Applications` folder.
+3. Launch from Launchpad, Spotlight, or Dock.
+   > **macOS Gatekeeper Note (Unsigned App)**:  
+   > Because the app is open-source and not notarized through a paid Apple Developer certificate, macOS Gatekeeper may show a warning on first launch. To open:
+   > - Simply **Right-click (or Control-click)** `LinkSpeed Pro.app` in Finder and select **Open** → **Open**, or
+   > - Run this one-time command in Terminal:
+   >   ```bash
+   >   xattr -cr "/Applications/LinkSpeed Pro.app"
+   >   ```
+
+#### 🐧 Linux (All Distributions & Architectures)
+- **AppImage (Portable)**: Download `LinkSpeed-Pro-*.AppImage`, make it executable, and run:
+  ```bash
+  chmod +x LinkSpeed-Pro-*.AppImage
+  ./LinkSpeed-Pro-*.AppImage
+  ```
+- **DEB (Debian, Ubuntu, Linux Mint)**: Download `linkspeed-pro_*_amd64.deb` and install:
+  ```bash
+  sudo dpkg -i linkspeed-pro_*_amd64.deb
+  ```
 
 ---
 
@@ -74,6 +95,8 @@ Then visit: 👉 **[http://localhost:4321](http://localhost:4321)**
 
 ## 💻 Features
 
+- **Integrated About & Diagnostics Modal**: View version, author credits, active backend bridge status, live OS/kernel queries, and copy formatted system reports with 1 click.
+- **WebUSB Direct Mode**: Directly query and inspect connected USB devices inside Chrome/Chromium without needing a local daemon or bridge.
 - **Real-Time Sub-Second Hotplug Detection**: Streams live hardware events via Server-Sent Events (SSE). Plugging or unplugging a cable triggers instant UI updates and audio chimes.
 - **Dynamic Speedometer Gauge**: Visual representation of physical link speed across all tiers:
   - ⚡ **40 Gb/s**: USB4 / Thunderbolt 4
