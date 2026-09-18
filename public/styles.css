@@ -70,6 +70,24 @@ body {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Electron Desktop Window Enhancements */
+body.is-electron .app-header {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+body.is-electron button,
+body.is-electron a,
+body.is-electron input,
+body.is-electron .nav-tabs,
+body.is-electron .header-actions {
+  -webkit-app-region: no-drag;
+}
+
+body.electron-mac .header-container {
+  padding-left: 92px;
+}
+
 .header-container {
   max-width: 1440px;
   margin: 0 auto;

@@ -18,42 +18,44 @@
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started & Deployment Options
 
-Ensure Node.js (v18+) is installed on your system.
+LinkSpeed Pro supports multiple ways to run, from 1-click standalone desktop apps (zero terminal needed) to developer CLI tools:
 
-### 🍎 On macOS:
-
-**Option 1 — 1-Click Finder Launcher (Easiest)**:
-- Open Finder, navigate to the folder, and double-click:
-  👉 **`LinkSpeed-Pro.command`**  
-  *(Automatically opens Terminal, starts the daemon, and launches your browser to `http://localhost:4321`)*
-
-**Option 2 — Terminal / Zero-Setup**:
-```bash
-# Direct run from anywhere (no clone needed):
-npx github:rco-Tech/linkspeed-PRO
-
-# Or if you already cloned the repo:
-cd ~/Projects/active-link-speed && ./start.sh
-```
-
-**Option 3 — Add to macOS Dock as a Native App**:
-1. Open `http://localhost:4321` in **Safari** or **Chrome**.
-2. In **Safari**: Click `File` ➔ `Add to Dock...` (or in **Chrome**: Click the Install icon in the address bar).
-3. LinkSpeed Pro now opens in its own frameless window directly from your Dock!
+### 📦 1. 1-Click Desktop App (Zero Terminal Needed)
+Download the standalone application from **[GitHub Releases](https://github.com/rco-Tech/linkspeed-PRO/releases)**:
+- **macOS**: Download `LinkSpeed-Pro.dmg`, drag to `Applications`, and launch from your Launchpad or Dock.
+- **Linux**: Download `LinkSpeed-Pro.AppImage` or `.deb`.
+- *No terminal commands, no manual Node.js installation required—everything is self-contained!*
 
 ---
 
-### 🐧 On Linux:
-
+### ⚙️ 2. Silent Background Service (For Browser / PWA Users)
+If you prefer using the browser/PWA version but don't want to run terminal commands every time:
 ```bash
-cd /home/robert/Projects/active-link-speed
-./start.sh
+./install-daemon.sh
+```
+- **macOS**: Automatically registers a user `LaunchAgent`.
+- **Linux**: Automatically enables a `systemd --user` service.
+- *The daemon starts silently on system boot in the background (< 15MB RAM). Whenever you open `http://localhost:4321` or click your Dock PWA icon, it connects immediately!*
+- *(To uninstall anytime: `./install-daemon.sh --uninstall`)*
+
+---
+
+### 💻 3. Run Directly via Terminal / CLI
+
+**Zero-setup run from anywhere (no clone needed)**:
+```bash
+npx github:rco-Tech/linkspeed-PRO
 ```
 
-Then open your browser to:
-👉 **[http://localhost:4321](http://localhost:4321)**
+**Or run from cloned repository**:
+```bash
+# macOS 1-click launcher: double-click LinkSpeed-Pro.command in Finder
+# Or run in terminal:
+./start.sh
+```
+Then visit: 👉 **[http://localhost:4321](http://localhost:4321)**
 
 ---
 
