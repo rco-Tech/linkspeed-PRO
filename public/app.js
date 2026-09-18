@@ -614,6 +614,18 @@
       });
     }
 
+    const tabAbout = document.getElementById('tabAbout');
+    if (tabAbout) {
+      tabAbout.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAboutModal();
+      });
+    }
+
+    // Expose globally for native desktop menu calls
+    window.openAboutModal = openAboutModal;
+    window.closeAboutModal = closeAboutModal;
+
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && el.aboutModalBackdrop && el.aboutModalBackdrop.style.display !== 'none') {
         closeAboutModal();

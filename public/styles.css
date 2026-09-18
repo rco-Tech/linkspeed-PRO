@@ -170,6 +170,28 @@ body.electron-mac .header-container {
   }
 }
 
+@media (max-width: 1220px) {
+  .header-container {
+    flex-wrap: wrap;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    row-gap: 8px;
+  }
+  .brand {
+    order: 1;
+  }
+  .header-actions {
+    order: 2;
+    margin-left: auto;
+  }
+  .header-center {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    padding-top: 2px;
+  }
+}
+
 /* Nav tabs */
 .header-center {
   display: flex;
@@ -440,8 +462,20 @@ body.electron-mac .header-container {
 .stats-bar {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
+  gap: 14px;
   margin-bottom: 24px;
+}
+
+@media (max-width: 1220px) {
+  .stats-bar {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .stat-card {

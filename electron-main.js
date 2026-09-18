@@ -65,12 +65,18 @@ function ensureServerRunning() {
 
 function createMainWindow() {
   const isMac = process.platform === 'darwin';
+  const { screen, Menu } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenW, height: screenH } = primaryDisplay.workAreaSize;
+
+  const winW = Math.min(1360, Math.max(880, Math.floor(screenW * 0.92)));
+  const winH = Math.min(920, Math.max(640, Math.floor(screenH * 0.92)));
 
   mainWindow = new BrowserWindow({
-    width: 1320,
-    height: 880,
-    minWidth: 980,
-    minHeight: 680,
+    width: winW,
+    height: winH,
+    minWidth: 760,
+    minHeight: 540,
     backgroundColor: '#07090e',
     title: 'LinkSpeed Pro',
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
@@ -83,6 +89,78 @@ function createMainWindow() {
     },
     show: false
   });
+
+  // Native macOS Application Menu
+  if (isMac) {
+    const menuTemplate = [
+      {
+        label: 'LinkSpeed Pro',
+        submenu: [
+          {
+            label: 'About LinkSpeed Pro',
+            click: () => {
+              if (mainWindow) {
+                mainWindow.webContents.executeJavaScript(`
+                  if (typeof openAboutModal === 'function') openAboutModal();
+                `);
+              }
+            }
+          },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' }
+        ]
+      },
+      {
+        label: 'View',
+        submenu: [
+          { role: 'reload' },
+          { role: 'forceReload' },
+          { type: 'separator' },
+          { role: 'resetZoom' },
+          { role: 'zoomIn' },
+          { role: 'zoomOut' },
+          { type: 'separator' },
+          { role: 'togglefullscreen' }
+        ]
+      },
+      {
+        label: 'Window',
+        submenu: [
+          { role: 'minimize' },
+          { role: 'zoom' },
+          { role: 'close' }
+        ]
+      },
+      {
+        label: 'Help',
+        submenu: [
+          {
+            label: 'About LinkSpeed Pro & Version Info',
+            click: () => {
+              if (mainWindow) {
+                mainWindow.webContents.executeJavaScript(`
+                  if (typeof openAboutModal === 'function') openAboutModal();
+                `);
+              }
+            }
+          },
+          {
+            label: 'GitHub Repository & Releases',
+            click: () => {
+              shell.openExternal('https://github.com/rco-Tech/linkspeed-PRO/releases');
+            }
+          }
+        ]
+      }
+    ];
+    Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
+  }
 
   mainWindow.loadURL(`http://localhost:${PORT}`);
 
