@@ -727,20 +727,22 @@ body {
   justify-content: center;
   align-items: center;
   position: relative;
-  margin: 10px 0;
+  margin: 6px 0;
 }
 
 .speedometer-svg {
   width: 100%;
   max-width: 320px;
+  overflow: visible;
 }
 
 .gauge-tick-label {
   font-size: 11px;
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: 700;
   fill: var(--text-muted);
   text-anchor: middle;
+  dominant-baseline: central;
 }
 
 .gauge-digital-val {
@@ -749,16 +751,18 @@ body {
   font-family: var(--font-mono);
   fill: var(--c-usb4);
   text-anchor: middle;
+  dominant-baseline: central;
   filter: drop-shadow(0 0 10px var(--c-usb4-glow));
 }
 
 .gauge-digital-unit {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   font-family: var(--font-mono);
-  fill: var(--text-muted);
+  fill: var(--text-secondary);
   text-anchor: middle;
+  dominant-baseline: central;
 }
 
 #gaugeMeterPath {
@@ -766,8 +770,9 @@ body {
 }
 
 .gauge-stats-row {
-  display: flex;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
   border-top: 1px solid var(--border-subtle);
   padding-top: 16px;
   margin-top: 10px;
@@ -777,19 +782,26 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  text-align: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .g-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .g-val {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-family: var(--font-mono);
   color: var(--text-primary);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 /* Guide Card Steps */

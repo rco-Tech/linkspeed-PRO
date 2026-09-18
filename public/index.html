@@ -235,41 +235,75 @@
               <span class="card-tag" id="gaugeTierTag">INACTIVE</span>
             </div>
             <div class="gauge-container">
-              <svg class="speedometer-svg" viewBox="0 0 300 190">
-                <!-- Background track -->
-                <path d="M 40 160 A 110 110 0 0 1 260 160" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="22" stroke-linecap="round"/>
-                <!-- Colored active path -->
-                <path id="gaugeMeterPath" d="M 40 160 A 110 110 0 0 1 260 160" fill="none" stroke="url(#gaugeGrad)" stroke-width="22" stroke-linecap="round" stroke-dasharray="346" stroke-dashoffset="346"/>
-                <!-- Ticks -->
-                <text x="40" y="180" class="gauge-tick-label">12M</text>
-                <text x="75" y="110" class="gauge-tick-label">480M</text>
-                <text x="150" y="60" class="gauge-tick-label">5G</text>
-                <text x="225" y="110" class="gauge-tick-label">10G</text>
-                <text x="260" y="180" class="gauge-tick-label">40G</text>
-                <!-- Central digital readout -->
-                <text x="150" y="130" class="gauge-digital-val" id="gaugeDigitalVal">--</text>
-                <text x="150" y="152" class="gauge-digital-unit" id="gaugeDigitalUnit">NEGOTIATED LINK</text>
+              <svg class="speedometer-svg" viewBox="0 0 340 230">
                 <defs>
-                  <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#3b82f6"/>
-                    <stop offset="35%" stop-color="#10b981"/>
-                    <stop offset="70%" stop-color="#00f0ff"/>
-                    <stop offset="100%" stop-color="#a855f7"/>
+                  <linearGradient id="gaugeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#2563eb"/>
+                    <stop offset="35%" stop-color="#00f0ff"/>
+                    <stop offset="75%" stop-color="#10b981"/>
+                    <stop offset="100%" stop-color="#4ade80"/>
                   </linearGradient>
+                  <filter id="arcGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                    <feMerge>
+                      <feMergeNode in="blur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
                 </defs>
+
+                <!-- Inactive background track (Radius 110, Center 170, 145) -->
+                <path d="M 80 208 A 110 110 0 1 1 260 208"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.07)"
+                      stroke-width="14"
+                      stroke-linecap="round"/>
+
+                <!-- Active colored path -->
+                <path id="gaugeMeterPath"
+                      d="M 80 208 A 110 110 0 1 1 260 208"
+                      fill="none"
+                      stroke="url(#gaugeGrad)"
+                      stroke-width="14"
+                      stroke-linecap="round"
+                      stroke-dasharray="480"
+                      stroke-dashoffset="480"
+                      filter="url(#arcGlow)"/>
+
+                <!-- Radial Tick Lines (Outside the arc) -->
+                <g stroke="rgba(255,255,255,0.18)" stroke-width="2" stroke-linecap="round">
+                  <line x1="72" y1="214" x2="60" y2="220"/>
+                  <line x1="68" y1="116" x2="56" y2="112"/>
+                  <line x1="170" y1="35" x2="170" y2="22"/>
+                  <line x1="272" y1="116" x2="284" y2="112"/>
+                  <line x1="268" y1="214" x2="280" y2="220"/>
+                </g>
+
+                <!-- Tick Labels (Positioned comfortably OUTSIDE the arc to avoid collisions) -->
+                <text x="48" y="222" class="gauge-tick-label">12M</text>
+                <text x="36" y="108" class="gauge-tick-label">480M</text>
+                <text x="170" y="16" class="gauge-tick-label">5G</text>
+                <text x="304" y="108" class="gauge-tick-label">10G</text>
+                <text x="292" y="222" class="gauge-tick-label">40G</text>
+
+                <!-- Central Digital Readout (Unobstructed in center) -->
+                <text x="170" y="130" class="gauge-digital-val" id="gaugeDigitalVal">--</text>
+                <text x="170" y="156" class="gauge-digital-unit" id="gaugeDigitalUnit">NEGOTIATED LINK</text>
               </svg>
             </div>
+
+            <!-- Stats Row: 3 cleanly separated grid columns -->
             <div class="gauge-stats-row">
               <div class="g-stat">
-                <span class="g-label">Protocol Spec:</span>
+                <span class="g-label">PROTOCOL SPEC</span>
                 <strong class="g-val" id="gaugeSpecVal">--</strong>
               </div>
               <div class="g-stat">
-                <span class="g-label">Bus Power:</span>
+                <span class="g-label">BUS POWER</span>
                 <strong class="g-val" id="gaugePowerVal">--</strong>
               </div>
               <div class="g-stat">
-                <span class="g-label">Lanes:</span>
+                <span class="g-label">LANES</span>
                 <strong class="g-val" id="gaugeLanesVal">--</strong>
               </div>
             </div>

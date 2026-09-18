@@ -637,8 +637,8 @@
     el.visDeviceSpec.textContent = `Descriptor Spec: USB ${dev.version || '2.0'}`;
     el.visDeviceIcon.textContent = getDeviceEmoji(dev);
 
-    // Speedometer Gauge Arc (total length = 346)
-    // 0 Mb -> offset 346, 40000 Mb -> offset 0
+    // Speedometer Gauge Arc (total length = 480)
+    // 0 Mb -> offset 480, 40000 Mb -> offset 0
     let fillRatio = 0.05;
     if (speedInfo.numericMb >= 40000) fillRatio = 1.0;
     else if (speedInfo.numericMb >= 20000) fillRatio = 0.85;
@@ -647,15 +647,16 @@
     else if (speedInfo.numericMb >= 480) fillRatio = 0.25;
     else if (speedInfo.numericMb >= 12) fillRatio = 0.10;
 
-    const targetOffset = 346 - (346 * fillRatio);
+    const targetOffset = 480 - (480 * fillRatio);
     el.gaugeMeterPath.style.strokeDashoffset = targetOffset;
     el.gaugeDigitalVal.textContent = speedInfo.label;
     el.gaugeDigitalVal.style.fill = getTierColor(speedInfo.tier);
-    el.gaugeDigitalUnit.textContent = speedInfo.fullLabel.toUpperCase();
+    el.gaugeDigitalUnit.textContent = getTierSubLabel(speedInfo);
     el.gaugeTierTag.textContent = speedInfo.tier.toUpperCase();
     el.gaugeTierTag.style.color = getTierColor(speedInfo.tier);
 
-    el.gaugeSpecVal.textContent = dev.version ? `USB ${dev.version}` : '--';
+    const specText = dev.version ? (dev.version.startsWith('USB') ? dev.version : `USB ${dev.version}`) : '--';
+    el.gaugeSpecVal.textContent = specText;
     el.gaugePowerVal.textContent = dev.maxPower || 'Bus Powered';
     el.gaugeLanesVal.textContent = `${dev.rxLanes || 1}x Rx / ${dev.txLanes || 1}x Tx`;
 
@@ -1050,6 +1051,20 @@
 
   function capitalize(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function getTierSubLabel(speedInfo) {
+    if (!speedInfo) return 'NEGOTIATED LINK';
+    switch (speedInfo.tier) {
+      case 'usb4': return 'USB4 / THUNDERBOLT 4';
+      case 'ss20': return 'USB 3.2 GEN 2X2';
+      case 'ss10': return 'USB 3.2 GEN 2 (10G)';
+      case 'ss5':  return 'USB 3.2 GEN 1 (5G)';
+      case 'hs480': return 'USB 2.0 (HIGH-SPEED)';
+      case 'fs12': return 'USB 1.1 (FULL-SPEED)';
+      case 'ls1':  return 'USB 1.0 (LOW-SPEED)';
+      default: return 'NEGOTIATED LINK';
+    }
   }
 
   function getTierColor(tier) {
