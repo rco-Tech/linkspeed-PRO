@@ -238,7 +238,17 @@
   }
 
   function setupPwa() {
-    // Register Service Worker
+    // Inside Electron native desktop app, disable Service Worker caching so updates load live
+    if (navigator.userAgent.includes('Electron')) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((r) => r.unregister());
+        });
+      }
+      return;
+    }
+
+    // Register Service Worker for browser PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
         console.log('LinkSpeed Pro ServiceWorker registered:', reg.scope);
@@ -627,6 +637,14 @@
     window.closeAboutModal = closeAboutModal;
 
     window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === ',' || e.key.toLowerCase() === 'i')) {
+        e.preventDefault();
+        openAboutModal();
+      }
+      if (e.key === 'F1') {
+        e.preventDefault();
+        openAboutModal();
+      }
       if (e.key === 'Escape' && el.aboutModalBackdrop && el.aboutModalBackdrop.style.display !== 'none') {
         closeAboutModal();
       }

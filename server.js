@@ -582,12 +582,10 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    // Service worker should never be cached aggressively
+    // Disable aggressive caching so updates and builds load immediately
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     if (filePath.endsWith('sw.js')) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Service-Worker-Allowed', '/');
-    } else {
-      res.setHeader('Cache-Control', 'public, max-age=3600');
     }
 
     res.writeHead(200, { 'Content-Type': contentType });

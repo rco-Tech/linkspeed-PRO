@@ -78,7 +78,7 @@ function createMainWindow() {
     minWidth: 760,
     minHeight: 540,
     backgroundColor: '#07090e',
-    title: 'LinkSpeed Pro',
+    title: 'LinkSpeed Pro v1.1.2',
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 18, y: 18 },
     icon: path.join(__dirname, 'public', 'icons', 'icon-512.png'),
@@ -90,87 +90,106 @@ function createMainWindow() {
     show: false
   });
 
-  // Native macOS Application Menu
-  if (isMac) {
-    const menuTemplate = [
-      {
-        label: 'LinkSpeed Pro',
-        submenu: [
-          {
-            label: 'About LinkSpeed Pro',
-            click: () => {
-              if (mainWindow) {
-                mainWindow.webContents.executeJavaScript(`
-                  if (typeof openAboutModal === 'function') openAboutModal();
-                `);
-              }
-            }
-          },
-          { type: 'separator' },
-          { role: 'services' },
-          { type: 'separator' },
-          { role: 'hide' },
-          { role: 'hideOthers' },
-          { role: 'unhide' },
-          { type: 'separator' },
-          { role: 'quit' }
-        ]
-      },
-      {
-        label: 'View',
-        submenu: [
-          { role: 'reload' },
-          { role: 'forceReload' },
-          { type: 'separator' },
-          { role: 'resetZoom' },
-          { role: 'zoomIn' },
-          { role: 'zoomOut' },
-          { type: 'separator' },
-          { role: 'togglefullscreen' }
-        ]
-      },
-      {
-        label: 'Window',
-        submenu: [
-          { role: 'minimize' },
-          { role: 'zoom' },
-          { role: 'close' }
-        ]
-      },
-      {
-        label: 'Help',
-        submenu: [
-          {
-            label: 'About LinkSpeed Pro & Version Info',
-            click: () => {
-              if (mainWindow) {
-                mainWindow.webContents.executeJavaScript(`
-                  if (typeof openAboutModal === 'function') openAboutModal();
-                `);
-              }
-            }
-          },
-          {
-            label: 'GitHub Repository & Releases',
-            click: () => {
-              shell.openExternal('https://github.com/rco-Tech/linkspeed-PRO/releases');
+  // Application Menu (macOS App Menu and Cross-Platform Help/About)
+  const menuTemplate = [
+    ...(isMac ? [{
+      label: 'LinkSpeed Pro',
+      submenu: [
+        {
+          label: 'About LinkSpeed Pro',
+          accelerator: 'CmdOrCtrl+I',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.executeJavaScript(`
+                if (typeof openAboutModal === 'function') openAboutModal();
+              `);
             }
           }
-        ]
-      }
-    ];
-    Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
-  }
+        },
+        {
+          label: 'Preferences / About...',
+          accelerator: 'CmdOrCtrl+,',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.executeJavaScript(`
+                if (typeof openAboutModal === 'function') openAboutModal();
+              `);
+            }
+          }
+        },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }] : []),
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { role: 'close' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About LinkSpeed Pro & Version Info',
+          accelerator: 'F1',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.executeJavaScript(`
+                if (typeof openAboutModal === 'function') openAboutModal();
+              `);
+            }
+          }
+        },
+        {
+          label: 'GitHub Repository & Releases',
+          click: () => {
+            shell.openExternal('https://github.com/rco-Tech/linkspeed-PRO/releases');
+          }
+        }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
   mainWindow.loadURL(`http://localhost:${PORT}`);
 
-  // Inject electron styling class once DOM is ready
+  // Inject electron styling class and app version once DOM is ready
   mainWindow.webContents.on('dom-ready', () => {
+    const appVersion = app.getVersion();
     mainWindow.webContents.executeJavaScript(`
       document.body.classList.add('is-electron');
       if (navigator.platform.includes('Mac')) {
         document.body.classList.add('electron-mac');
       }
+      window.__ELECTRON_APP_VERSION__ = '${appVersion}';
+      const brandVer = document.getElementById('btnBrandVersion');
+      if (brandVer) brandVer.textContent = 'v${appVersion}';
+      const aboutVerPill = document.querySelector('.about-title-row .version-pill');
+      if (aboutVerPill) aboutVerPill.textContent = 'v${appVersion}';
+      const aboutVerStat = document.getElementById('aboutReleaseVer');
+      if (aboutVerStat) aboutVerStat.textContent = 'v${appVersion} (Production)';
     `);
   });
 
@@ -193,6 +212,16 @@ function createMainWindow() {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  const { session } = require('electron');
+  try {
+    if (session && session.defaultSession) {
+      await session.defaultSession.clearCache();
+      await session.defaultSession.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] });
+    }
+  } catch (err) {
+    console.warn('Session clear warning:', err.message);
+  }
+
   await ensureServerRunning();
   createMainWindow();
 

@@ -170,7 +170,7 @@ body.electron-mac .header-container {
   }
 }
 
-@media (max-width: 1220px) {
+@media (max-width: 1360px) {
   .header-container {
     flex-wrap: wrap;
     padding-top: 8px;
@@ -209,6 +209,12 @@ body.electron-mac .header-container {
   border: 1px solid var(--border-subtle);
   gap: 3px;
   max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-tab {
@@ -240,7 +246,7 @@ body.electron-mac .header-container {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 240, 255, 0.2);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 680px) {
   .nav-tab span:not(.tab-icon):not(.event-counter) {
     display: none;
   }
@@ -466,7 +472,7 @@ body.electron-mac .header-container {
   margin-bottom: 24px;
 }
 
-@media (max-width: 1220px) {
+@media (max-width: 1360px) {
   .stats-bar {
     grid-template-columns: repeat(3, 1fr);
   }
