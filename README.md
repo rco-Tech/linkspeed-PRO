@@ -20,15 +20,36 @@
 
 ## 🚀 Quick Start
 
-Ensure Node.js (v18+) is installed, then start the local engine:
+Ensure Node.js (v18+) is installed on your system.
+
+### 🍎 On macOS:
+
+**Option 1 — 1-Click Finder Launcher (Easiest)**:
+- Open Finder, navigate to the folder, and double-click:
+  👉 **`LinkSpeed-Pro.command`**  
+  *(Automatically opens Terminal, starts the daemon, and launches your browser to `http://localhost:4321`)*
+
+**Option 2 — Terminal / Zero-Setup**:
+```bash
+# Direct run from anywhere (no clone needed):
+npx github:rco-Tech/linkspeed-PRO
+
+# Or if you already cloned the repo:
+cd ~/Projects/active-link-speed && ./start.sh
+```
+
+**Option 3 — Add to macOS Dock as a Native App**:
+1. Open `http://localhost:4321` in **Safari** or **Chrome**.
+2. In **Safari**: Click `File` ➔ `Add to Dock...` (or in **Chrome**: Click the Install icon in the address bar).
+3. LinkSpeed Pro now opens in its own frameless window directly from your Dock!
+
+---
+
+### 🐧 On Linux:
 
 ```bash
-# Navigate to project directory
 cd /home/robert/Projects/active-link-speed
-
-# Start the native bridge & PWA server
-npm start
-# or: ./start.sh
+./start.sh
 ```
 
 Then open your browser to:

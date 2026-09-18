@@ -597,9 +597,19 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
+  const url = `http://localhost:${PORT}`;
   console.log(`=======================================================`);
   console.log(`⚡ LinkSpeed Pro Live Server running!`);
-  console.log(`📡 Local Web App: http://localhost:${PORT}`);
+  console.log(`📡 Local Web App: ${url}`);
   console.log(`🔌 Watching hardware events on ${os.platform()}...`);
   console.log(`=======================================================`);
+
+  // Auto-launch browser if not suppressed by NO_OPEN environment variable
+  if (!process.env.NO_OPEN) {
+    if (os.platform() === 'darwin') {
+      exec(`open "${url}"`, () => {});
+    } else if (os.platform() === 'linux' && process.env.DISPLAY) {
+      exec(`xdg-open "${url}"`, () => {});
+    }
+  }
 });
