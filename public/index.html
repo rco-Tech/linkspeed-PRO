@@ -36,28 +36,29 @@
         <div class="brand-text">
           <div class="brand-title">
             <span>LINKSPEED</span><span class="brand-badge">PRO</span>
+            <button class="brand-version" id="btnBrandVersion" title="LinkSpeed Pro v1.1.0 · Click for info">v1.1.0</button>
           </div>
-          <div class="brand-subtitle">USB & THUNDERBOLT CABLE NEGOTIATED SPEED INSPECTOR</div>
+          <div class="brand-subtitle">USB &amp; THUNDERBOLT SPEED INSPECTOR</div>
         </div>
       </div>
 
       <div class="header-center">
         <nav class="nav-tabs" id="navTabs">
-          <button class="nav-tab active" data-tab="workbench" id="tabWorkbench">
-            <span class="tab-icon">⚡</span> Cable Workbench
+          <button class="nav-tab active" data-tab="workbench" id="tabWorkbench" title="Cable Diagnostics Workbench">
+            <span class="tab-icon">⚡</span><span>Workbench</span>
           </button>
-          <button class="nav-tab" data-tab="grid" id="tabGrid">
-            <span class="tab-icon">🔲</span> Device Grid
+          <button class="nav-tab" data-tab="grid" id="tabGrid" title="Connected Hardware Grid">
+            <span class="tab-icon">🔲</span><span>Devices</span>
           </button>
-          <button class="nav-tab" data-tab="tree" id="tabTree">
-            <span class="tab-icon">🌳</span> System Report Tree
+          <button class="nav-tab" data-tab="tree" id="tabTree" title="macOS System Report Hierarchy">
+            <span class="tab-icon">🌳</span><span>System Tree</span>
           </button>
-          <button class="nav-tab" data-tab="timeline" id="tabTimeline">
-            <span class="tab-icon">⏱️</span> Hotplug Timeline
+          <button class="nav-tab" data-tab="timeline" id="tabTimeline" title="Hotplug Connection History">
+            <span class="tab-icon">⏱️</span><span>Timeline</span>
             <span class="event-counter" id="eventBadge">0</span>
           </button>
-          <button class="nav-tab" data-tab="webusb" id="tabWebusb">
-            <span class="tab-icon">🧪</span> WebUSB Lab
+          <button class="nav-tab" data-tab="webusb" id="tabWebusb" title="WebUSB Low-Level Diagnostics">
+            <span class="tab-icon">🧪</span><span>WebUSB</span>
           </button>
         </nav>
       </div>
@@ -66,7 +67,7 @@
         <!-- Live Connection Status Pill -->
         <div class="status-pill connected" id="connectionStatus" title="Real-time Sub-second Hotplug Watcher Active">
           <span class="status-dot"></span>
-          <span class="status-text" id="connectionStatusText">LIVE DAEMON</span>
+          <span class="status-text" id="connectionStatusText">LIVE</span>
         </div>
 
         <!-- Start Server Action Button (visible when offline) -->
@@ -79,11 +80,16 @@
           <span id="audioIcon">🔔</span>
         </button>
 
+        <!-- About Button -->
+        <button class="icon-btn" id="btnOpenAbout" title="About LinkSpeed Pro & System Specs" aria-label="About LinkSpeed Pro">
+          <span>ℹ️</span>
+        </button>
+
         <!-- Test Simulator Dropdown -->
         <div class="sim-dropdown-wrap">
           <button class="btn btn-secondary sim-btn" id="btnSimulate">
-            <span>⚡ Simulate Cable Test</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            <span>⚡ Simulate</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="sim-menu" id="simMenu">
             <div class="sim-menu-item" data-speed="480" data-name="SanDisk Extreme SSD (USB 2.0 Cable)">
@@ -667,6 +673,70 @@
 
       <div class="sm-footer">
         <button class="btn btn-secondary" id="btnDismissServerModal">Continue in Offline / Simulator Mode</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- About Dialog Modal Backdrop -->
+  <div class="modal-backdrop" id="aboutModalBackdrop" style="display: none;">
+    <div class="server-modal about-modal">
+      <div class="sm-header">
+        <div class="sm-title-wrap">
+          <div class="about-logo-wrap">
+            <img src="/icons/icon-192.png" width="44" height="44" alt="LinkSpeed Pro Logo" class="about-logo-img" />
+          </div>
+          <div>
+            <div class="about-title-row">
+              <h3>LinkSpeed Pro</h3>
+              <span class="brand-badge version-pill">v1.1.0</span>
+            </div>
+            <p>USB &amp; Thunderbolt Negotiated Speed &amp; Hardware Topology Inspector</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseAboutModal" aria-label="Close dialog">✕</button>
+      </div>
+
+      <div class="sm-body">
+        <div class="about-grid">
+          <div class="about-stat-box">
+            <span class="as-label">RELEASE VERSION</span>
+            <strong class="as-val text-cyan">v1.1.0 (Production)</strong>
+          </div>
+          <div class="about-stat-box">
+            <span class="as-label">RUNTIME PLATFORM</span>
+            <strong class="as-val" id="aboutPlatformVal">Electron Desktop</strong>
+          </div>
+          <div class="about-stat-box">
+            <span class="as-label">KERNEL BRIDGE</span>
+            <strong class="as-val" id="aboutKernelVal">Native sysfs / system_profiler</strong>
+          </div>
+          <div class="about-stat-box">
+            <span class="as-label">SPEED EVALUATOR</span>
+            <strong class="as-val">Sub-second Real-time SSE</strong>
+          </div>
+        </div>
+
+        <div class="about-desc-card">
+          <h4>About LinkSpeed Pro</h4>
+          <p>
+            Designed for engineers, hardware reviewers, and enthusiasts to inspect physical negotiated bus speeds across USB4, Thunderbolt 3/4, USB 3.2 Gen 2x2, SuperSpeed+ (10G), SuperSpeed (5G), and High-Speed (480M) ports. Instantly flags charge-only cable bottlenecks when 10G/20G peripherals are choked to USB 2.0.
+          </p>
+        </div>
+
+        <div class="about-meta-row">
+          <span>Author: <strong>rco-Tech</strong></span>
+          <span>License: <strong>MIT Open Source</strong></span>
+        </div>
+      </div>
+
+      <div class="sm-footer about-footer">
+        <a href="https://github.com/rco-Tech/linkspeed-PRO" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="btnAboutGithub">
+          🌐 View on GitHub
+        </a>
+        <a href="https://github.com/rco-Tech/linkspeed-PRO/releases" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" id="btnAboutUpdates">
+          🔄 Check Releases
+        </a>
+        <button class="btn btn-secondary btn-sm" id="btnDismissAboutModal">Close</button>
       </div>
     </div>
   </div>

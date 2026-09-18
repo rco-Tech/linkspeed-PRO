@@ -209,7 +209,16 @@
     codeTerminal: document.getElementById('codeTerminal'),
     codeNpx: document.getElementById('codeNpx'),
     codeBg: document.getElementById('codeBg'),
-    smStatusMsg: document.getElementById('smStatusMsg')
+    smStatusMsg: document.getElementById('smStatusMsg'),
+
+    // About modal elements
+    btnBrandVersion: document.getElementById('btnBrandVersion'),
+    btnOpenAbout: document.getElementById('btnOpenAbout'),
+    aboutModalBackdrop: document.getElementById('aboutModalBackdrop'),
+    btnCloseAboutModal: document.getElementById('btnCloseAboutModal'),
+    btnDismissAboutModal: document.getElementById('btnDismissAboutModal'),
+    aboutPlatformVal: document.getElementById('aboutPlatformVal'),
+    aboutKernelVal: document.getElementById('aboutKernelVal')
   };
 
   // -------------------------------------------------------------
@@ -224,6 +233,7 @@
     setupDrawer();
     setupWebUsbLab();
     setupServerModal();
+    setupAboutModal();
     connectSseStream();
   }
 
@@ -561,6 +571,57 @@
   }
 
   // -------------------------------------------------------------
+  // About LinkSpeed Pro Modal
+  // -------------------------------------------------------------
+  function openAboutModal() {
+    if (el.aboutModalBackdrop) {
+      el.aboutModalBackdrop.style.display = 'flex';
+      if (el.aboutPlatformVal) {
+        const isElectron = navigator.userAgent.includes('Electron');
+        el.aboutPlatformVal.textContent = isElectron ? 'Electron Native Desktop' : 'Progressive Web App (Browser)';
+      }
+      if (el.aboutKernelVal) {
+        const isMac = (systemInfo && systemInfo.platform === 'darwin') || navigator.platform.includes('Mac');
+        el.aboutKernelVal.textContent = isMac ? 'macOS (system_profiler)' : 'Linux (/sys/bus/usb sysfs)';
+      }
+    }
+  }
+
+  function closeAboutModal() {
+    if (el.aboutModalBackdrop) {
+      el.aboutModalBackdrop.style.display = 'none';
+    }
+  }
+
+  function setupAboutModal() {
+    if (el.btnBrandVersion) {
+      el.btnBrandVersion.addEventListener('click', openAboutModal);
+    }
+    if (el.btnOpenAbout) {
+      el.btnOpenAbout.addEventListener('click', openAboutModal);
+    }
+    if (el.btnCloseAboutModal) {
+      el.btnCloseAboutModal.addEventListener('click', closeAboutModal);
+    }
+    if (el.btnDismissAboutModal) {
+      el.btnDismissAboutModal.addEventListener('click', closeAboutModal);
+    }
+    if (el.aboutModalBackdrop) {
+      el.aboutModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === el.aboutModalBackdrop) {
+          closeAboutModal();
+        }
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && el.aboutModalBackdrop && el.aboutModalBackdrop.style.display !== 'none') {
+        closeAboutModal();
+      }
+    });
+  }
+
+  // -------------------------------------------------------------
   // Real-Time Server-Sent Events (SSE) Client
   // -------------------------------------------------------------
   function connectSseStream() {
@@ -568,14 +629,14 @@
       sseEventSource.close();
     }
 
-    el.connectionStatus.className = 'status-pill connecting';
+    el.connectionStatus.className = 'status-pill connected';
     el.connectionStatusText.textContent = 'CONNECTING...';
 
     sseEventSource = new EventSource('/api/stream');
 
     sseEventSource.onopen = () => {
       el.connectionStatus.className = 'status-pill connected';
-      el.connectionStatusText.textContent = 'LIVE DAEMON';
+      el.connectionStatusText.textContent = 'LIVE';
       el.connectionStatus.classList.remove('clickable');
       el.connectionStatus.title = 'Real-time Sub-second Hotplug Watcher Active';
       if (el.offlineBanner) el.offlineBanner.style.display = 'none';
