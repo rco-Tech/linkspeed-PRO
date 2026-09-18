@@ -1,9 +1,20 @@
-# ⚡ LinkSpeed Pro
+<p align="center">
+  <img src="public/icons/icon-192.png" width="128" height="128" alt="LinkSpeed Pro Logo" />
+</p>
 
-> **USB Cable Negotiated Speed & Hardware Link Inspector (PWA)**  
-> Inspect physical USB negotiated link speeds, detect charge-only cable bottlenecks, and explore complete hardware topology trees just like macOS System Report.
+<h1 align="center">LinkSpeed Pro</h1>
 
-![LinkSpeed Pro Icon](public/icons/icon.svg)
+<p align="center">
+  <strong>USB Cable Negotiated Speed &amp; Hardware Link Inspector (PWA)</strong><br />
+  Inspect physical USB negotiated link speeds, detect charge-only cable bottlenecks, and explore complete hardware topology trees just like macOS System Report.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Link%20Speed-Up%20to%2040%20Gb%2Fs-00f0ff?style=flat-square" alt="Link Speed" />
+  <img src="https://img.shields.io/badge/PWA-Installable-10b981?style=flat-square" alt="PWA" />
+  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-3b82f6?style=flat-square" alt="Platform" />
+  <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=flat-square" alt="License" />
+</p>
 
 ---
 
