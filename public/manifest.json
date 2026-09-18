@@ -1,0 +1,30 @@
+{
+  "name": "LinkSpeed Pro — USB & Cable Speed Inspector",
+  "short_name": "LinkSpeed",
+  "description": "Inspect USB cable negotiated speed, Thunderbolt 4 link speed, and USB hardware tree like macOS System Report.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#00f0ff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["utilities", "developer tools", "hardware"]
+}

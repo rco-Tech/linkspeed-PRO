@@ -1,0 +1,21 @@
+{
+  "name": "active-link-speed",
+  "version": "1.0.0",
+  "description": "LinkSpeed Pro — PWA for USB Cable Negotiated Speed & Hardware Inspection",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "usb",
+    "link-speed",
+    "usb-c",
+    "thunderbolt",
+    "pwa",
+    "hardware-inspector",
+    "system-profiler"
+  ],
+  "author": "",
+  "license": "MIT"
+}
