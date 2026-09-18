@@ -60,6 +60,11 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Install system dependencies for AppImage & DEB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 libarchive-tools dpkg
+
       - name: Install dependencies
         run: npm ci || npm install
 
