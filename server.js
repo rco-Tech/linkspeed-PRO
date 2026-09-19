@@ -333,48 +333,62 @@ function scanWindowsUsb() {
   const devices = [];
   try {
     const psScript = `
-$ErrorActionPreference = 'SilentlyContinue'
-$usb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'USB'" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service
+$ProgressPreference = 'SilentlyContinue';
+$ErrorActionPreference = 'SilentlyContinue';
+$usb = Get-CimInstance Win32_PnPEntity -Filter "DeviceID LIKE 'USB%' OR DeviceID LIKE 'USB4%' OR PNPClass = 'USB'" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service, PNPClass;
 [PSCustomObject]@{ Usb = @($usb) } | ConvertTo-Json -Compress -Depth 2
 `;
-    const cmd = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psScript.replace(/\n/g, ' ')}"`;
-    const rawOut = execSync(cmd, { encoding: 'utf8', timeout: 6000 });
-    const parsed = JSON.parse(rawOut);
+    const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
+    const cmd = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encoded}`;
+    const rawOut = execSync(cmd, { encoding: 'utf8', timeout: 8000 });
+
+    const jsonStart = rawOut.indexOf('{');
+    const jsonEnd = rawOut.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) {
+      return devices;
+    }
+    const parsed = JSON.parse(rawOut.slice(jsonStart, jsonEnd + 1));
     const items = parsed.Usb || [];
 
     for (const item of items) {
       const devId = item.DeviceID || '';
-      if (!devId) continue;
+      if (!devId || devId.includes('VIRTUAL_POWER_PDO')) continue;
 
       const name = item.Name || item.Description || 'USB Device';
+      const devIdUpper = devId.toUpperCase();
 
       // Parse VID and PID (e.g. USB\VID_0781&PID_5583\...)
       const vidMatch = devId.match(/VID_([0-9a-fA-F]{4})/i);
       const pidMatch = devId.match(/PID_([0-9a-fA-F]{4})/i);
-      const vid = vidMatch ? vidMatch[1].toLowerCase() : '';
-      const pid = pidMatch ? pidMatch[1].toLowerCase() : '';
+      const vid = vidMatch ? vidMatch[1].toLowerCase() : (devIdUpper.includes('VEN_8086') ? '8086' : '');
+      const pid = pidMatch ? pidMatch[1].toLowerCase() : (devIdUpper.includes('DEV_7EC0') ? '7ec0' : '');
 
       // Serial number
       const parts = devId.split('\\');
       const serialCandidate = parts.length > 2 ? parts[2] : null;
       const serial = (serialCandidate && !serialCandidate.includes('&')) ? serialCandidate : null;
 
-      const isRootHub = devId.toUpperCase().includes('ROOT_HUB');
-      const isHub = isRootHub || devId.toUpperCase().includes('HUB') || (item.Service && item.Service.toLowerCase().includes('hub')) || name.toLowerCase().includes('hub');
+      const isRootHub = devIdUpper.includes('ROOT_HUB') || devIdUpper.includes('HOST_ROUTER') || devIdUpper.includes('ROOT_DEVICE_ROUTER') || (item.Service && item.Service.toUpperCase() === 'USBXHCI');
+      const isHub = isRootHub || devIdUpper.includes('HUB') || (item.Service && item.Service.toUpperCase().includes('HUB')) || name.toLowerCase().includes('hub') || devIdUpper.includes('ROUTER');
+      const isThunderbolt = devIdUpper.startsWith('USB4') || name.includes('Thunderbolt') || name.includes('USB4');
 
       // Speed detection heuristic based on Windows controller / hub info
       let speedMb = 480;
-      if (devId.toUpperCase().includes('ROOT_HUB30') || (item.Service && item.Service.toLowerCase().includes('usbhub3'))) {
-        speedMb = 5000;
-      } else if (isRootHub && (name.includes('3.1') || name.includes('3.2') || name.includes('USB4') || name.includes('Thunderbolt'))) {
+      if (isThunderbolt) {
+        speedMb = 40000;
+      } else if (devIdUpper.includes('ROOT_HUB30') || (item.Service && item.Service.toUpperCase() === 'USBHUB3')) {
+        speedMb = name.includes('SuperSpeed+') ? 10000 : 5000;
+      } else if (isRootHub && (name.includes('3.2') || name.includes('3.1') || name.includes('10 Gb'))) {
         speedMb = 10000;
-      } else if (isRootHub) {
-        speedMb = 480;
+      } else if (isRootHub && name.includes('3.0')) {
+        speedMb = 5000;
       } else if (name.includes('SuperSpeed+') || name.includes('10 Gb') || name.includes('Gen 2')) {
         speedMb = 10000;
       } else if (name.includes('SuperSpeed') || name.includes('3.0') || name.includes('3.1') || name.includes('3.2') || item.Service === 'USBSTOR' || item.Service === 'UASP') {
         speedMb = 5000;
-      } else if (name.toLowerCase().includes('keyboard') || name.toLowerCase().includes('mouse') || name.toLowerCase().includes('hid')) {
+      } else if (item.PNPClass === 'Net' || name.toLowerCase().includes('gbe') || name.toLowerCase().includes('ethernet')) {
+        speedMb = 5000;
+      } else if (name.toLowerCase().includes('keyboard') || name.toLowerCase().includes('mouse') || item.PNPClass === 'HIDClass') {
         speedMb = 12;
       }
 
@@ -384,19 +398,20 @@ $usb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'USB'" | Select-Objec
         id: devId,
         product: name,
         manufacturer: item.Manufacturer || '',
-        vendorName: vendorName || (isRootHub ? 'USB Host Controller' : 'USB Device'),
+        vendorName: vendorName || (isRootHub ? 'USB Host Controller' : (isThunderbolt ? 'USB4 / Thunderbolt Device' : 'USB Device')),
         idVendor: vid,
         idProduct: pid,
         serial: serial,
-        version: isRootHub ? (speedMb >= 5000 ? 'USB 3.x / xHCI' : 'USB 2.0 / EHCI') : (speedMb >= 5000 ? 'USB 3.0 SuperSpeed' : 'USB 2.0 High-Speed'),
+        version: isThunderbolt ? 'USB4 / Thunderbolt 4' : (isRootHub ? (speedMb >= 5000 ? 'USB 3.x / xHCI' : 'USB 2.0 / EHCI') : (speedMb >= 5000 ? 'USB 3.0 SuperSpeed' : 'USB 2.0 High-Speed')),
         bcdDevice: null,
         maxPower: isRootHub ? 'Self-powered' : (speedMb >= 5000 ? '900mA' : '500mA'),
         removable: isRootHub ? 'fixed' : 'removable',
-        rxLanes: 1,
-        txLanes: 1,
+        rxLanes: speedMb >= 20000 ? 2 : 1,
+        txLanes: speedMb >= 20000 ? 2 : 1,
         speedInfo: normalizeSpeed(speedMb),
         isRootHub,
         isHub,
+        isThunderbolt,
         connectedAt: Date.now()
       };
 
