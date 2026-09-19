@@ -1,7 +1,7 @@
 {
   "name": "linkspeed-pro",
   "productName": "LinkSpeed Pro",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "LinkSpeed Pro — 1-Click Desktop App & PWA for USB Cable Negotiated Speed & Hardware Inspection",
   "main": "electron-main.js",
   "bin": {
@@ -79,7 +79,15 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/icons/icon-512.png"
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "LinkSpeed Pro"
     }
   }
 }

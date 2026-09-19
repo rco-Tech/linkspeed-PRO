@@ -327,11 +327,101 @@ function scanMacOsUsb() {
 }
 
 // -------------------------------------------------------------
+// Windows Hardware Scanner (PowerShell CIM / PnP Query Engine)
+// -------------------------------------------------------------
+function scanWindowsUsb() {
+  const devices = [];
+  try {
+    const psScript = `
+$ErrorActionPreference = 'SilentlyContinue'
+$usb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'USB'" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service
+[PSCustomObject]@{ Usb = @($usb) } | ConvertTo-Json -Compress -Depth 2
+`;
+    const cmd = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psScript.replace(/\n/g, ' ')}"`;
+    const rawOut = execSync(cmd, { encoding: 'utf8', timeout: 6000 });
+    const parsed = JSON.parse(rawOut);
+    const items = parsed.Usb || [];
+
+    for (const item of items) {
+      const devId = item.DeviceID || '';
+      if (!devId) continue;
+
+      const name = item.Name || item.Description || 'USB Device';
+
+      // Parse VID and PID (e.g. USB\VID_0781&PID_5583\...)
+      const vidMatch = devId.match(/VID_([0-9a-fA-F]{4})/i);
+      const pidMatch = devId.match(/PID_([0-9a-fA-F]{4})/i);
+      const vid = vidMatch ? vidMatch[1].toLowerCase() : '';
+      const pid = pidMatch ? pidMatch[1].toLowerCase() : '';
+
+      // Serial number
+      const parts = devId.split('\\');
+      const serialCandidate = parts.length > 2 ? parts[2] : null;
+      const serial = (serialCandidate && !serialCandidate.includes('&')) ? serialCandidate : null;
+
+      const isRootHub = devId.toUpperCase().includes('ROOT_HUB');
+      const isHub = isRootHub || devId.toUpperCase().includes('HUB') || (item.Service && item.Service.toLowerCase().includes('hub')) || name.toLowerCase().includes('hub');
+
+      // Speed detection heuristic based on Windows controller / hub info
+      let speedMb = 480;
+      if (devId.toUpperCase().includes('ROOT_HUB30') || (item.Service && item.Service.toLowerCase().includes('usbhub3'))) {
+        speedMb = 5000;
+      } else if (isRootHub && (name.includes('3.1') || name.includes('3.2') || name.includes('USB4') || name.includes('Thunderbolt'))) {
+        speedMb = 10000;
+      } else if (isRootHub) {
+        speedMb = 480;
+      } else if (name.includes('SuperSpeed+') || name.includes('10 Gb') || name.includes('Gen 2')) {
+        speedMb = 10000;
+      } else if (name.includes('SuperSpeed') || name.includes('3.0') || name.includes('3.1') || name.includes('3.2') || item.Service === 'USBSTOR' || item.Service === 'UASP') {
+        speedMb = 5000;
+      } else if (name.toLowerCase().includes('keyboard') || name.toLowerCase().includes('mouse') || name.toLowerCase().includes('hid')) {
+        speedMb = 12;
+      }
+
+      const vendorName = VENDOR_NAMES[vid] || (item.Manufacturer && !item.Manufacturer.startsWith('(') ? item.Manufacturer : null);
+
+      const devObj = {
+        id: devId,
+        product: name,
+        manufacturer: item.Manufacturer || '',
+        vendorName: vendorName || (isRootHub ? 'USB Host Controller' : 'USB Device'),
+        idVendor: vid,
+        idProduct: pid,
+        serial: serial,
+        version: isRootHub ? (speedMb >= 5000 ? 'USB 3.x / xHCI' : 'USB 2.0 / EHCI') : (speedMb >= 5000 ? 'USB 3.0 SuperSpeed' : 'USB 2.0 High-Speed'),
+        bcdDevice: null,
+        maxPower: isRootHub ? 'Self-powered' : (speedMb >= 5000 ? '900mA' : '500mA'),
+        removable: isRootHub ? 'fixed' : 'removable',
+        rxLanes: 1,
+        txLanes: 1,
+        speedInfo: normalizeSpeed(speedMb),
+        isRootHub,
+        isHub,
+        connectedAt: Date.now()
+      };
+
+      devObj.bottleneck = analyzeBottleneck(devObj);
+      devices.push(devObj);
+    }
+  } catch (err) {
+    console.warn('Windows USB scan error:', err.message);
+  }
+  return devices;
+}
+
+// -------------------------------------------------------------
 // Unified Scanner & Tree Hierarchy Builder
 // -------------------------------------------------------------
 function scanAllDevices() {
-  const isMac = os.platform() === 'darwin';
-  const devices = isMac ? scanMacOsUsb() : scanLinuxUsb();
+  const platform = os.platform();
+  let devices = [];
+  if (platform === 'darwin') {
+    devices = scanMacOsUsb();
+  } else if (platform === 'win32') {
+    devices = scanWindowsUsb();
+  } else {
+    devices = scanLinuxUsb();
+  }
 
   // Summary statistics
   const stats = {
@@ -608,6 +698,8 @@ server.listen(PORT, '0.0.0.0', () => {
       exec(`open "${url}"`, () => {});
     } else if (os.platform() === 'linux' && process.env.DISPLAY) {
       exec(`xdg-open "${url}"`, () => {});
+    } else if (os.platform() === 'win32') {
+      exec(`start "${url}"`, () => {});
     }
   }
 });

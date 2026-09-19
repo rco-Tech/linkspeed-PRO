@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Link%20Speed-Up%20to%2040%20Gb%2Fs-00f0ff?style=flat-square" alt="Link Speed" />
-  <img src="https://img.shields.io/badge/Desktop%20App-macOS%20%7C%20Linux-3b82f6?style=flat-square" alt="Desktop App" />
+  <img src="https://img.shields.io/badge/Desktop%20App-Windows%20%7C%20macOS%20%7C%20Linux-3b82f6?style=flat-square" alt="Desktop App" />
   <img src="https://img.shields.io/badge/PWA-Installable-10b981?style=flat-square" alt="PWA" />
   <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=flat-square" alt="License" />
 </p>
@@ -25,6 +25,10 @@ LinkSpeed Pro supports multiple ways to run, from 1-click standalone desktop app
 ### 📦 1. 1-Click Desktop App (Zero Terminal Needed)
 
 Download the latest release for your operating system from **[GitHub Releases](https://github.com/rco-Tech/linkspeed-PRO/releases)**:
+
+#### 🪟 Windows (10 / 11 / Server)
+- **1-Click Setup Installer (Recommended)**: Download `LinkSpeed-Pro-Setup-*.exe` and run. It installs in seconds and adds a desktop shortcut.
+- **Portable Standalone Executable**: Download `LinkSpeed-Pro-*.exe` and run directly from anywhere (zero installation or admin privileges needed).
 
 #### 🍏 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
 1. Download **`LinkSpeed-Pro-*-arm64-mac.zip`** (for Apple Silicon) or **`LinkSpeed-Pro-*-mac.zip`** (for Intel / universal DMG).
@@ -131,13 +135,13 @@ Then visit: 👉 **[http://localhost:4321](http://localhost:4321)**
 │            Runs locally on http://localhost:4321        │
 └───────────────────────────▲─────────────────────────────┘
                             │  Kernel Hardware Queries
-    ┌───────────────────────┴───────────────────────┐
-    │                                               │
-┌───┴─────────────────────────┐   ┌─────────────────┴─────────────────┐
-│     Linux Kernel Engine     │   │        macOS Kernel Engine        │
-│  /sys/bus/usb/devices/      │   │  system_profiler SPUSBDataType    │
-│  /sys/bus/thunderbolt/      │   │  SPThunderboltDataType            │
-└─────────────────────────────┘   └───────────────────────────────────┘
+    ┌───────────────────────────┼───────────────────────────┐
+    │                           │                           │
+┌───┴─────────────────────┐ ┌───┴─────────────────────┐ ┌───┴─────────────────────┐
+│   Linux Kernel Engine   │ │   macOS Kernel Engine   │ │  Windows Kernel Engine  │
+│  /sys/bus/usb/devices/  │ │  system_profiler SPUSB  │ │  PowerShell CIM & PnP   │
+│  /sys/bus/thunderbolt/  │ │  SPThunderboltDataType  │ │  Win32_PnPEntity / WMI  │
+└─────────────────────────┘ └─────────────────────────┘ └─────────────────────────┘
 ```
 
 ---
