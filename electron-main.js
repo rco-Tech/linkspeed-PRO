@@ -78,7 +78,7 @@ function createMainWindow() {
     minWidth: 760,
     minHeight: 540,
     backgroundColor: '#07090e',
-    title: 'LinkSpeed Pro v1.1.9',
+    title: 'LinkSpeed Pro v1.2.0',
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 18, y: 18 },
     icon: path.join(__dirname, 'public', 'icons', 'icon-512.png'),
