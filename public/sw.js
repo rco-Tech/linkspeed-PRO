@@ -1,4 +1,4 @@
-const CACHE_NAME = 'linkspeed-pro-v1';
+const CACHE_NAME = 'linkspeed-pro-v1.2.4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
