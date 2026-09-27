@@ -330,14 +330,22 @@ function scanMacOsUsb() {
 // Windows Hardware Scanner (Direct SetupAPI / IOCTL Engine & Fast CIM Fallback)
 // -------------------------------------------------------------
 function getWindowsScannerPath() {
+  // Real physical paths must be prioritized.
+  // Never return an app.asar virtual path because Windows CreateProcess cannot execute inside ASAR!
+  const unpackedPath = path.join(__dirname, 'bin', 'linkspeed-win-scanner.exe').replace('app.asar', 'app.asar.unpacked');
+  const resourcesPath = path.join(process.resourcesPath || path.join(__dirname, '..'), 'bin', 'linkspeed-win-scanner.exe');
+  const localDevPath = path.join(__dirname, 'bin', 'linkspeed-win-scanner.exe');
+
   const candidates = [
-    path.join(__dirname, 'bin', 'linkspeed-win-scanner.exe'),
-    path.join(process.resourcesPath || '', 'bin', 'linkspeed-win-scanner.exe'),
-    path.join(__dirname, '..', 'bin', 'linkspeed-win-scanner.exe'),
-    path.join(__dirname, 'bin', 'linkspeed-win-scanner.exe').replace('app.asar', 'app.asar.unpacked')
+    unpackedPath,
+    resourcesPath,
+    localDevPath
   ];
   for (const p of candidates) {
-    if (fs.existsSync(p)) return p;
+    if (p.includes('app.asar\\') || p.includes('app.asar/')) continue;
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch {}
   }
   return null;
 }
@@ -444,7 +452,7 @@ function scanWindowsUsb() {
     const psScript = `
 $ProgressPreference = 'SilentlyContinue';
 $ErrorActionPreference = 'SilentlyContinue';
-$usb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'USB'" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service, PNPClass;
+$usb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'USB' OR Service = 'USBSTOR' OR Service = 'UASPStor'" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service, PNPClass;
 $tb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'System' AND (Name LIKE '%USB4%' OR Name LIKE '%Thunderbolt%')" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service, PNPClass;
 [PSCustomObject]@{ Usb = @($usb + $tb) } | ConvertTo-Json -Compress -Depth 2
 `;
