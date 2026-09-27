@@ -848,7 +848,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
 
   // Auto-launch browser if not suppressed by NO_OPEN environment variable
-  if (!process.env.NO_OPEN) {
+  if (!process.env.NO_OPEN && !process.versions.electron) {
     if (os.platform() === 'darwin') {
       exec(`open "${url}"`, () => {});
     } else if (os.platform() === 'linux' && process.env.DISPLAY) {
