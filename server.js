@@ -234,93 +234,285 @@ function scanLinuxUsb() {
 // -------------------------------------------------------------
 // macOS Hardware Scanner (system_profiler SPUSBDataType SPThunderboltDataType)
 // -------------------------------------------------------------
-function scanMacOsUsb() {
-  const devices = [];
-  try {
-    const rawUsbJson = execSync('system_profiler -json SPUSBDataType', { encoding: 'utf8', timeout: 5000 });
-    const parsed = JSON.parse(rawUsbJson);
-    const rootItems = parsed.SPUSBDataType || [];
+// macOS Hardware Scanner (IOKit / ioreg Fast Engine & system_profiler Fallback)
+// -------------------------------------------------------------
+let cachedMacTbDevices = [];
 
-    const walkItem = (item, parentId = 'root') => {
-      const name = item._name || 'USB Device';
-      const speedStr = item.device_speed || '';
-      let speedMb = 480;
-      if (speedStr.includes('40_Gb')) speedMb = 40000;
-      else if (speedStr.includes('20_Gb')) speedMb = 20000;
-      else if (speedStr.includes('10_Gb')) speedMb = 10000;
-      else if (speedStr.includes('5_Gb')) speedMb = 5000;
-      else if (speedStr.includes('480_Mb')) speedMb = 480;
-      else if (speedStr.includes('12_Mb')) speedMb = 12;
-      else if (speedStr.includes('1.5_Mb')) speedMb = 1.5;
+function generateMacDeviceId(item, parentId, index = 0) {
+  if (item.location_id) {
+    return `mac-loc-${String(item.location_id).trim()}`;
+  }
+  const vid = (item.vendor_id || '').replace(/^0x/, '').toLowerCase();
+  const pid = (item.product_id || '').replace(/^0x/, '').toLowerCase();
+  const serial = (item.serial_num || '').trim();
+  const safeName = (item._name || 'device').replace(/[^a-zA-Z0-9_-]/g, '_');
 
-      const vid = (item.vendor_id || '').replace(/^0x/, '').toLowerCase();
-      const pid = (item.product_id || '').replace(/^0x/, '').toLowerCase();
-      const isHub = (item._items && item._items.length > 0) || name.toLowerCase().includes('hub');
+  if (vid && pid && serial) {
+    return `mac-${vid}-${pid}-${serial}`;
+  }
+  if (vid && pid) {
+    return `mac-${parentId}-${vid}-${pid}-${index}`;
+  }
+  return `mac-${parentId}-${safeName}-${index}`;
+}
 
-      const devObj = {
-        id: item.location_id || `mac-${Math.random().toString(36).substr(2, 9)}`,
-        product: name,
-        manufacturer: item.manufacturer || '',
-        vendorName: VENDOR_NAMES[vid] || item.manufacturer || null,
-        idVendor: vid,
-        idProduct: pid,
-        serial: item.serial_num || null,
-        version: item.bcd_device ? `bcd ${item.bcd_device}` : null,
-        bcdDevice: item.bcd_device || null,
-        maxPower: item.bus_power ? `${item.bus_power}mA` : null,
-        removable: item.is_removable === 'yes' ? 'removable' : 'unknown',
-        rxLanes: 1,
-        txLanes: 1,
-        speedInfo: normalizeSpeed(speedMb),
-        isRootHub: parentId === 'root',
-        isHub,
-        connectedAt: Date.now()
-      };
-      devObj.bottleneck = analyzeBottleneck(devObj);
-      devices.push(devObj);
+function parseIoregNode(node, devices, parentId = 'root') {
+  if (!node || typeof node !== 'object') return;
 
-      if (item._items && Array.isArray(item._items)) {
-        for (const child of item._items) {
-          walkItem(child, devObj.id);
-        }
-      }
+  const name = node['USB Product Name'] || node['kUSBProductString'] || node['USB Custom Name'] || node.IORegistryEntryName || node.name || 'USB Device';
+  const vidNum = node.idVendor || node.vendorId || 0;
+  const pidNum = node.idProduct || node.productId || 0;
+  const vidHex = vidNum ? Number(vidNum).toString(16).padStart(4, '0').toLowerCase() : '';
+  const pidHex = pidNum ? Number(pidNum).toString(16).padStart(4, '0').toLowerCase() : '';
+  const serial = node['USB Serial Number'] || node.serialNumber || null;
+  const locationId = node.locationID || node['Location ID'] || null;
+
+  // Speed in ioreg: 0=1.5M, 1=12M, 2=480M, 3=5G, 4=10G, 5=20G
+  const rawSpeed = node['Device Speed'] !== undefined ? node['Device Speed'] : (node.Speed !== undefined ? node.Speed : null);
+  let speedMb = 480;
+  if (rawSpeed === 5 || rawSpeed === '20_Gb' || String(name).includes('20 Gb')) speedMb = 20000;
+  else if (rawSpeed === 4 || rawSpeed === '10_Gb' || String(name).includes('10 Gb')) speedMb = 10000;
+  else if (rawSpeed === 3 || rawSpeed === '5_Gb' || String(name).includes('5 Gb')) speedMb = 5000;
+  else if (rawSpeed === 2 || rawSpeed === '480_Mb') speedMb = 480;
+  else if (rawSpeed === 1 || rawSpeed === '12_Mb') speedMb = 12;
+  else if (rawSpeed === 0 || rawSpeed === '1.5_Mb') speedMb = 1.5;
+
+  const isHub = Boolean(node.IOCFPlugInTypes && Object.keys(node.IOCFPlugInTypes).some(k => k.includes('Hub'))) ||
+                String(name).toLowerCase().includes('hub') ||
+                Boolean(node.IORegistryEntryChildren && node.IORegistryEntryChildren.length > 0);
+  const isRoot = parentId === 'root' || String(name).toLowerCase().includes('root hub') || String(name).toLowerCase().includes('host controller');
+
+  const stableId = locationId
+    ? `mac-loc-${locationId}`
+    : (vidHex && pidHex && serial ? `mac-${vidHex}-${pidHex}-${serial}` : `mac-${parentId}-${vidHex || 'root'}-${pidHex || '0000'}-${(name || 'dev').replace(/[^a-zA-Z0-9_-]/g, '_')}`);
+
+  // Only add recognizable USB nodes (ignore internal bus glue without name/vid)
+  if (vidHex || pidHex || locationId || isRoot) {
+    const devObj = {
+      id: stableId,
+      product: name,
+      manufacturer: node['USB Vendor Name'] || node['kUSBVendorString'] || '',
+      vendorName: VENDOR_NAMES[vidHex] || node['USB Vendor Name'] || node['kUSBVendorString'] || (isRoot ? 'Host Controller' : null),
+      idVendor: vidHex,
+      idProduct: pidHex,
+      serial,
+      version: node.bcdUSB ? `USB ${(Number(node.bcdUSB) / 256).toFixed(1)}` : null,
+      bcdDevice: node.bcdDevice ? String(node.bcdDevice) : null,
+      maxPower: node['Bus Power Available'] ? `${node['Bus Power Available']}mA` : null,
+      removable: isRoot ? 'fixed' : 'removable',
+      rxLanes: speedMb >= 20000 ? 2 : 1,
+      txLanes: speedMb >= 20000 ? 2 : 1,
+      speedInfo: normalizeSpeed(speedMb),
+      isRootHub: isRoot,
+      isHub,
+      isThunderbolt: false,
+      connectedAt: Date.now()
     };
-
-    for (const root of rootItems) {
-      walkItem(root);
-    }
-  } catch (err) {
-    console.warn('macOS USB scan error:', err.message);
+    devObj.bottleneck = analyzeBottleneck(devObj);
+    devices.push(devObj);
   }
 
-  // Thunderbolt scan on macOS
-  try {
-    const rawTb = execSync('system_profiler -json SPThunderboltDataType', { encoding: 'utf8', timeout: 5000 });
-    const tbParsed = JSON.parse(rawTb);
-    const tbBuses = tbParsed.SPThunderboltDataType || [];
-    for (const bus of tbBuses) {
-      devices.push({
-        id: bus.domain_uuid || `tb-${bus._name || 'domain'}`,
-        isThunderbolt: true,
-        product: bus._name || 'Thunderbolt / USB4 Controller',
-        manufacturer: 'Apple / Intel',
-        vendorName: 'Apple Inc.',
-        idVendor: '05ac',
-        idProduct: '0000',
-        serial: bus.domain_uuid || null,
-        version: 'Thunderbolt 3/4 / USB4',
-        maxPower: 'Self-powered',
-        removable: 'fixed',
-        rxLanes: 2,
-        txLanes: 2,
-        speedInfo: normalizeSpeed(40000),
-        bottleneck: { isBottleneck: false, severity: 'none', title: 'Thunderbolt Active' },
-        isRootHub: true,
-        isHub: false
-      });
+  // Recurse children
+  if (node.IORegistryEntryChildren && Array.isArray(node.IORegistryEntryChildren)) {
+    for (const child of node.IORegistryEntryChildren) {
+      parseIoregNode(child, devices, stableId);
     }
-  } catch (err) {
-    // Thunderbolt might not be supported or empty
+  }
+}
+
+function scanMacOsUsb() {
+  let devices = [];
+
+  // Tier 1: Fast IOKit ioreg XML Plist query via plutil (< 40ms, zero lag, no random IDs)
+  try {
+    const rawJson = execSync('ioreg -p IOUSB -l -a | plutil -convert json -o - -', {
+      encoding: 'utf8',
+      timeout: 3000,
+      maxBuffer: 4 * 1024 * 1024
+    });
+    const parsed = JSON.parse(rawJson);
+    if (parsed) {
+      const rootList = Array.isArray(parsed) ? parsed : [parsed];
+      for (const root of rootList) {
+        parseIoregNode(root, devices, 'root');
+      }
+    }
+  } catch (ioregErr) {
+    // ioreg query failed or plutil not available, will fall back to system_profiler
+  }
+
+  // Tier 2 Fallback: system_profiler with mini detail level and combined USB + Thunderbolt query
+  if (devices.length === 0) {
+    try {
+      const rawJson = execSync('system_profiler -json -detailLevel mini SPUSBDataType SPThunderboltDataType', {
+        encoding: 'utf8',
+        timeout: 15000,
+        maxBuffer: 8 * 1024 * 1024
+      });
+      const parsed = JSON.parse(rawJson || '{}');
+      const rootItems = parsed.SPUSBDataType || [];
+
+      const walkItem = (item, parentId = 'root', index = 0) => {
+        const name = item._name || 'USB Device';
+        const speedStr = item.device_speed || '';
+        let speedMb = 480;
+        if (speedStr.includes('40_Gb')) speedMb = 40000;
+        else if (speedStr.includes('20_Gb')) speedMb = 20000;
+        else if (speedStr.includes('10_Gb')) speedMb = 10000;
+        else if (speedStr.includes('5_Gb')) speedMb = 5000;
+        else if (speedStr.includes('480_Mb')) speedMb = 480;
+        else if (speedStr.includes('12_Mb')) speedMb = 12;
+        else if (speedStr.includes('1.5_Mb')) speedMb = 1.5;
+
+        const vid = (item.vendor_id || '').replace(/^0x/, '').toLowerCase();
+        const pid = (item.product_id || '').replace(/^0x/, '').toLowerCase();
+        const isHub = (item._items && item._items.length > 0) || name.toLowerCase().includes('hub');
+
+        // CRITICAL FIX: Deterministic, stable ID without Math.random()
+        const stableId = generateMacDeviceId(item, parentId, index);
+
+        const devObj = {
+          id: stableId,
+          product: name,
+          manufacturer: item.manufacturer || '',
+          vendorName: VENDOR_NAMES[vid] || item.manufacturer || (parentId === 'root' ? 'Host Controller' : null),
+          idVendor: vid,
+          idProduct: pid,
+          serial: item.serial_num || null,
+          version: item.bcd_device ? `bcd ${item.bcd_device}` : null,
+          bcdDevice: item.bcd_device || null,
+          maxPower: item.bus_power ? `${item.bus_power}mA` : null,
+          removable: item.is_removable === 'yes' ? 'removable' : (parentId === 'root' ? 'fixed' : 'unknown'),
+          rxLanes: 1,
+          txLanes: 1,
+          speedInfo: normalizeSpeed(speedMb),
+          isRootHub: parentId === 'root',
+          isHub,
+          isThunderbolt: false,
+          connectedAt: Date.now()
+        };
+        devObj.bottleneck = analyzeBottleneck(devObj);
+        devices.push(devObj);
+
+        if (item._items && Array.isArray(item._items)) {
+          item._items.forEach((child, cIdx) => {
+            walkItem(child, stableId, cIdx);
+          });
+        }
+      };
+
+      rootItems.forEach((root, rIdx) => {
+        walkItem(root, 'root', rIdx);
+      });
+
+      // Handle Thunderbolt in combined output
+      const tbBuses = parsed.SPThunderboltDataType || [];
+      if (tbBuses.length > 0) {
+        cachedMacTbDevices = [];
+        for (let bIdx = 0; bIdx < tbBuses.length; bIdx++) {
+          const bus = tbBuses[bIdx];
+          const busId = bus.domain_uuid ? `tb-bus-${bus.domain_uuid}` : `tb-bus-${(bus._name || 'domain').replace(/\s+/g, '_')}-${bIdx}`;
+          const busObj = {
+            id: busId,
+            isThunderbolt: true,
+            product: bus._name || 'Thunderbolt / USB4 Controller',
+            manufacturer: 'Apple / Intel',
+            vendorName: 'Apple Inc.',
+            idVendor: '05ac',
+            idProduct: '0000',
+            serial: bus.domain_uuid || null,
+            version: 'Thunderbolt 3/4 / USB4',
+            maxPower: 'Self-powered',
+            removable: 'fixed',
+            rxLanes: 2,
+            txLanes: 2,
+            speedInfo: normalizeSpeed(40000),
+            bottleneck: { isBottleneck: false, severity: 'none', title: 'Thunderbolt Active' },
+            isRootHub: true,
+            isHub: false,
+            connectedAt: Date.now()
+          };
+          cachedMacTbDevices.push(busObj);
+
+          // Walk connected Thunderbolt devices
+          if (bus._items && Array.isArray(bus._items)) {
+            for (let dIdx = 0; dIdx < bus._items.length; dIdx++) {
+              const tbDev = bus._items[dIdx];
+              const tbDevId = tbDev.device_uuid ? `tb-dev-${tbDev.device_uuid}` : `tb-dev-${busId}-${dIdx}`;
+              cachedMacTbDevices.push({
+                id: tbDevId,
+                isThunderbolt: true,
+                product: tbDev._name || 'Thunderbolt Device',
+                manufacturer: tbDev.vendor_name_key || 'Thunderbolt',
+                vendorName: tbDev.vendor_name_key || 'Thunderbolt Device',
+                idVendor: '05ac',
+                idProduct: '0000',
+                serial: tbDev.device_uuid || null,
+                version: 'Thunderbolt 3/4',
+                maxPower: 'Self-powered',
+                removable: 'removable',
+                rxLanes: 2,
+                txLanes: 2,
+                speedInfo: normalizeSpeed(40000),
+                bottleneck: { isBottleneck: false, severity: 'none', title: 'Thunderbolt Active' },
+                isRootHub: false,
+                isHub: false,
+                connectedAt: Date.now()
+              });
+            }
+          }
+        }
+      }
+    } catch (profErr) {
+      console.warn('macOS system_profiler fallback error:', profErr.message);
+    }
+  }
+
+  // If ioreg found USB devices, query Thunderbolt separately or use cached Thunderbolt
+  if (cachedMacTbDevices.length === 0) {
+    try {
+      const rawTb = execSync('system_profiler -json -detailLevel mini SPThunderboltDataType', {
+        encoding: 'utf8',
+        timeout: 8000
+      });
+      const tbParsed = JSON.parse(rawTb);
+      const tbBuses = tbParsed.SPThunderboltDataType || [];
+      for (let bIdx = 0; bIdx < tbBuses.length; bIdx++) {
+        const bus = tbBuses[bIdx];
+        const busId = bus.domain_uuid ? `tb-bus-${bus.domain_uuid}` : `tb-bus-${(bus._name || 'domain').replace(/\s+/g, '_')}-${bIdx}`;
+        cachedMacTbDevices.push({
+          id: busId,
+          isThunderbolt: true,
+          product: bus._name || 'Thunderbolt / USB4 Controller',
+          manufacturer: 'Apple / Intel',
+          vendorName: 'Apple Inc.',
+          idVendor: '05ac',
+          idProduct: '0000',
+          serial: bus.domain_uuid || null,
+          version: 'Thunderbolt 3/4 / USB4',
+          maxPower: 'Self-powered',
+          removable: 'fixed',
+          rxLanes: 2,
+          txLanes: 2,
+          speedInfo: normalizeSpeed(40000),
+          bottleneck: { isBottleneck: false, severity: 'none', title: 'Thunderbolt Active' },
+          isRootHub: true,
+          isHub: false,
+          connectedAt: Date.now()
+        });
+      }
+    } catch (_) {
+      // Thunderbolt might not be supported or busy
+    }
+  }
+
+  // Merge Thunderbolt devices into device list
+  if (cachedMacTbDevices.length > 0) {
+    for (const tb of cachedMacTbDevices) {
+      if (!devices.some(d => d.id === tb.id)) {
+        devices.push(tb);
+      }
+    }
   }
 
   return devices;
