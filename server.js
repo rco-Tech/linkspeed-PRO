@@ -327,100 +327,207 @@ function scanMacOsUsb() {
 }
 
 // -------------------------------------------------------------
-// Windows Hardware Scanner (PowerShell CIM / PnP Query Engine)
+// Windows Hardware Scanner (Direct SetupAPI / IOCTL Engine & Fast CIM Fallback)
 // -------------------------------------------------------------
+function getWindowsScannerPath() {
+  const candidates = [
+    path.join(__dirname, 'bin', 'linkspeed-win-scanner.exe'),
+    path.join(process.resourcesPath || '', 'bin', 'linkspeed-win-scanner.exe'),
+    path.join(__dirname, '..', 'bin', 'linkspeed-win-scanner.exe'),
+    path.join(__dirname, 'bin', 'linkspeed-win-scanner.exe').replace('app.asar', 'app.asar.unpacked')
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+let winScannerReady = false;
+let winScannerBin = null;
+
+function ensureWindowsScanner() {
+  if (winScannerReady && winScannerBin && fs.existsSync(winScannerBin)) return winScannerBin;
+
+  const found = getWindowsScannerPath();
+  if (found) {
+    winScannerBin = found;
+    winScannerReady = true;
+    return winScannerBin;
+  }
+
+  // Attempt on-the-fly compilation with csc.exe if source exists
+  const srcPath = path.join(__dirname, 'src', 'scanner-windows.cs');
+  const targetBin = path.join(__dirname, 'bin', 'linkspeed-win-scanner.exe');
+  const cscPath = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe';
+  const csc = fs.existsSync(cscPath) ? cscPath : 'csc.exe';
+
+  try {
+    if (fs.existsSync(srcPath)) {
+      const binDir = path.dirname(targetBin);
+      if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
+      execSync(`"${csc}" /nologo /platform:anycpu /optimize+ /out:"${targetBin}" "${srcPath}"`, {
+        timeout: 10000,
+        windowsHide: true
+      });
+      if (fs.existsSync(targetBin)) {
+        winScannerBin = targetBin;
+        winScannerReady = true;
+        return winScannerBin;
+      }
+    }
+  } catch (compileErr) {
+    console.warn('[Windows Engine] Native compiler fallback:', compileErr.message);
+  }
+
+  return null;
+}
+
 function scanWindowsUsb() {
   const devices = [];
+
+  // Tier 1: Fast Native C# SetupAPI / IOCTL Engine (< 350ms, true negotiated hardware link speeds)
+  try {
+    const scannerExe = ensureWindowsScanner();
+    if (scannerExe) {
+      const stdout = execSync(`"${scannerExe}"`, {
+        encoding: 'utf8',
+        timeout: 4000,
+        windowsHide: true,
+        maxBuffer: 4 * 1024 * 1024
+      });
+      const parsed = JSON.parse(stdout || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        for (const item of parsed) {
+          const speedInfo = normalizeSpeed(item.speedNumericMb);
+          const vid = (item.idVendor || '').toLowerCase();
+          const pid = (item.idProduct || '').toLowerCase();
+          const vendorName = VENDOR_NAMES[vid] || item.vendorName || (item.manufacturer ? item.manufacturer : null);
+
+          const devObj = {
+            id: item.id || `win-${vid}-${pid}-${item.port || '0'}`,
+            product: item.product || 'USB Device',
+            manufacturer: item.manufacturer || '',
+            vendorName,
+            idVendor: vid,
+            idProduct: pid,
+            serial: item.serial || null,
+            version: item.version ? item.version.trim() : (item.isThunderbolt ? 'USB4 / Thunderbolt 4' : null),
+            bcdDevice: item.bcdDevice || null,
+            maxPower: item.maxPower || (item.isRootHub ? 'Self-powered' : null),
+            removable: item.removable || (item.isRootHub ? 'fixed' : 'removable'),
+            rxLanes: item.rxLanes || 1,
+            txLanes: item.txLanes || 1,
+            busnum: item.hubIndex !== undefined ? item.hubIndex : null,
+            devnum: item.port !== undefined ? item.port : null,
+            devpath: item.port ? `Port #${item.port}` : null,
+            deviceClass: item.deviceClass || null,
+            isRootHub: Boolean(item.isRootHub),
+            isHub: Boolean(item.isHub),
+            isThunderbolt: Boolean(item.isThunderbolt),
+            isSuperSpeedCapable: Boolean(item.isSuperSpeedCapable),
+            isSuperSpeedPlusCapable: Boolean(item.isSuperSpeedPlusCapable),
+            speedInfo,
+            connectedAt: Date.now()
+          };
+          devObj.bottleneck = analyzeBottleneck(devObj);
+          devices.push(devObj);
+        }
+        return devices;
+      }
+    }
+  } catch (nativeErr) {
+    console.warn('[Windows Engine] Native scanner error, falling back to CIM query:', nativeErr.message);
+  }
+
+  // Tier 2: Optimized PowerShell CIM query fallback (< 1.5s, indexed PNPClass filter)
   try {
     const psScript = `
 $ProgressPreference = 'SilentlyContinue';
 $ErrorActionPreference = 'SilentlyContinue';
-$usb = Get-CimInstance Win32_PnPEntity -Filter "DeviceID LIKE 'USB%' OR DeviceID LIKE 'USB4%' OR PNPClass = 'USB'" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service, PNPClass;
-[PSCustomObject]@{ Usb = @($usb) } | ConvertTo-Json -Compress -Depth 2
+$usb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'USB'" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service, PNPClass;
+$tb = Get-CimInstance Win32_PnPEntity -Filter "PNPClass = 'System' AND (Name LIKE '%USB4%' OR Name LIKE '%Thunderbolt%')" | Select-Object DeviceID, Name, Description, Manufacturer, Status, Service, PNPClass;
+[PSCustomObject]@{ Usb = @($usb + $tb) } | ConvertTo-Json -Compress -Depth 2
 `;
     const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
     const cmd = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encoded}`;
-    const rawOut = execSync(cmd, { encoding: 'utf8', timeout: 8000 });
+    const rawOut = execSync(cmd, { encoding: 'utf8', timeout: 10000, windowsHide: true });
 
     const jsonStart = rawOut.indexOf('{');
     const jsonEnd = rawOut.lastIndexOf('}');
-    if (jsonStart === -1 || jsonEnd === -1) {
-      return devices;
-    }
-    const parsed = JSON.parse(rawOut.slice(jsonStart, jsonEnd + 1));
-    const items = parsed.Usb || [];
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      const parsed = JSON.parse(rawOut.slice(jsonStart, jsonEnd + 1));
+      const items = parsed.Usb || [];
 
-    for (const item of items) {
-      const devId = item.DeviceID || '';
-      if (!devId || devId.includes('VIRTUAL_POWER_PDO')) continue;
+      for (const item of items) {
+        const devId = item.DeviceID || '';
+        if (!devId || devId.includes('VIRTUAL_POWER_PDO')) continue;
 
-      const name = item.Name || item.Description || 'USB Device';
-      const devIdUpper = devId.toUpperCase();
+        const name = item.Name || item.Description || 'USB Device';
+        const devIdUpper = devId.toUpperCase();
 
-      // Parse VID and PID (e.g. USB\VID_0781&PID_5583\...)
-      const vidMatch = devId.match(/VID_([0-9a-fA-F]{4})/i);
-      const pidMatch = devId.match(/PID_([0-9a-fA-F]{4})/i);
-      const vid = vidMatch ? vidMatch[1].toLowerCase() : (devIdUpper.includes('VEN_8086') ? '8086' : '');
-      const pid = pidMatch ? pidMatch[1].toLowerCase() : (devIdUpper.includes('DEV_7EC0') ? '7ec0' : '');
+        const vidMatch = devId.match(/VID_([0-9a-fA-F]{4})/i);
+        const pidMatch = devId.match(/PID_([0-9a-fA-F]{4})/i);
+        const vid = vidMatch ? vidMatch[1].toLowerCase() : (devIdUpper.includes('VEN_8086') ? '8086' : '');
+        const pid = pidMatch ? pidMatch[1].toLowerCase() : (devIdUpper.includes('DEV_7EC0') ? '7ec0' : '');
 
-      // Serial number
-      const parts = devId.split('\\');
-      const serialCandidate = parts.length > 2 ? parts[2] : null;
-      const serial = (serialCandidate && !serialCandidate.includes('&')) ? serialCandidate : null;
+        const parts = devId.split('\\');
+        const serialCandidate = parts.length > 2 ? parts[2] : null;
+        const serial = (serialCandidate && !serialCandidate.includes('&')) ? serialCandidate : null;
 
-      const isRootHub = devIdUpper.includes('ROOT_HUB') || devIdUpper.includes('HOST_ROUTER') || devIdUpper.includes('ROOT_DEVICE_ROUTER') || (item.Service && item.Service.toUpperCase() === 'USBXHCI');
-      const isHub = isRootHub || devIdUpper.includes('HUB') || (item.Service && item.Service.toUpperCase().includes('HUB')) || name.toLowerCase().includes('hub') || devIdUpper.includes('ROUTER');
-      const isThunderbolt = devIdUpper.startsWith('USB4') || name.includes('Thunderbolt') || name.includes('USB4');
+        const isRootHub = devIdUpper.includes('ROOT_HUB') || devIdUpper.includes('HOST_ROUTER') || devIdUpper.includes('ROOT_DEVICE_ROUTER') || (item.Service && item.Service.toUpperCase() === 'USBXHCI');
+        const isHub = isRootHub || devIdUpper.includes('HUB') || (item.Service && item.Service.toUpperCase().includes('HUB')) || name.toLowerCase().includes('hub') || devIdUpper.includes('ROUTER');
+        const isThunderbolt = devIdUpper.startsWith('USB4') || name.includes('Thunderbolt') || name.includes('USB4');
 
-      // Speed detection heuristic based on Windows controller / hub info
-      let speedMb = 480;
-      if (isThunderbolt) {
-        speedMb = 40000;
-      } else if (devIdUpper.includes('ROOT_HUB30') || (item.Service && item.Service.toUpperCase() === 'USBHUB3')) {
-        speedMb = name.includes('SuperSpeed+') ? 10000 : 5000;
-      } else if (isRootHub && (name.includes('3.2') || name.includes('3.1') || name.includes('10 Gb'))) {
-        speedMb = 10000;
-      } else if (isRootHub && name.includes('3.0')) {
-        speedMb = 5000;
-      } else if (name.includes('SuperSpeed+') || name.includes('10 Gb') || name.includes('Gen 2')) {
-        speedMb = 10000;
-      } else if (name.includes('SuperSpeed') || name.includes('3.0') || name.includes('3.1') || name.includes('3.2') || item.Service === 'USBSTOR' || item.Service === 'UASP') {
-        speedMb = 5000;
-      } else if (item.PNPClass === 'Net' || name.toLowerCase().includes('gbe') || name.toLowerCase().includes('ethernet')) {
-        speedMb = 5000;
-      } else if (name.toLowerCase().includes('keyboard') || name.toLowerCase().includes('mouse') || item.PNPClass === 'HIDClass') {
-        speedMb = 12;
+        let speedMb = 480;
+        if (isThunderbolt) {
+          speedMb = 40000;
+        } else if (devIdUpper.includes('ROOT_HUB30') || (item.Service && item.Service.toUpperCase() === 'USBHUB3')) {
+          speedMb = name.includes('SuperSpeed+') ? 10000 : 5000;
+        } else if (isRootHub && (name.includes('3.2') || name.includes('3.1') || name.includes('10 Gb'))) {
+          speedMb = 10000;
+        } else if (isRootHub && name.includes('3.0')) {
+          speedMb = 5000;
+        } else if (name.includes('SuperSpeed+') || name.includes('10 Gb') || name.includes('Gen 2')) {
+          speedMb = 10000;
+        } else if (name.includes('SuperSpeed') || name.includes('3.0') || name.includes('3.1') || name.includes('3.2') || item.Service === 'USBSTOR' || item.Service === 'UASP') {
+          speedMb = 5000;
+        } else if (item.PNPClass === 'Net' || name.toLowerCase().includes('gbe') || name.toLowerCase().includes('ethernet')) {
+          speedMb = 5000;
+        } else if (name.toLowerCase().includes('keyboard') || name.toLowerCase().includes('mouse') || item.PNPClass === 'HIDClass') {
+          speedMb = 12;
+        }
+
+        const vendorName = VENDOR_NAMES[vid] || (item.Manufacturer && !item.Manufacturer.startsWith('(') ? item.Manufacturer : null);
+
+        const devObj = {
+          id: devId,
+          product: name,
+          manufacturer: item.Manufacturer || '',
+          vendorName: vendorName || (isRootHub ? 'USB Host Controller' : (isThunderbolt ? 'USB4 / Thunderbolt Device' : 'USB Device')),
+          idVendor: vid,
+          idProduct: pid,
+          serial: serial,
+          version: isThunderbolt ? 'USB4 / Thunderbolt 4' : (isRootHub ? (speedMb >= 5000 ? 'USB 3.x / xHCI' : 'USB 2.0 / EHCI') : (speedMb >= 5000 ? 'USB 3.0 SuperSpeed' : 'USB 2.0 High-Speed')),
+          bcdDevice: null,
+          maxPower: isRootHub ? 'Self-powered' : (speedMb >= 5000 ? '900mA' : '500mA'),
+          removable: isRootHub ? 'fixed' : 'removable',
+          rxLanes: speedMb >= 20000 ? 2 : 1,
+          txLanes: speedMb >= 20000 ? 2 : 1,
+          speedInfo: normalizeSpeed(speedMb),
+          isRootHub,
+          isHub,
+          isThunderbolt,
+          connectedAt: Date.now()
+        };
+
+        devObj.bottleneck = analyzeBottleneck(devObj);
+        devices.push(devObj);
       }
-
-      const vendorName = VENDOR_NAMES[vid] || (item.Manufacturer && !item.Manufacturer.startsWith('(') ? item.Manufacturer : null);
-
-      const devObj = {
-        id: devId,
-        product: name,
-        manufacturer: item.Manufacturer || '',
-        vendorName: vendorName || (isRootHub ? 'USB Host Controller' : (isThunderbolt ? 'USB4 / Thunderbolt Device' : 'USB Device')),
-        idVendor: vid,
-        idProduct: pid,
-        serial: serial,
-        version: isThunderbolt ? 'USB4 / Thunderbolt 4' : (isRootHub ? (speedMb >= 5000 ? 'USB 3.x / xHCI' : 'USB 2.0 / EHCI') : (speedMb >= 5000 ? 'USB 3.0 SuperSpeed' : 'USB 2.0 High-Speed')),
-        bcdDevice: null,
-        maxPower: isRootHub ? 'Self-powered' : (speedMb >= 5000 ? '900mA' : '500mA'),
-        removable: isRootHub ? 'fixed' : 'removable',
-        rxLanes: speedMb >= 20000 ? 2 : 1,
-        txLanes: speedMb >= 20000 ? 2 : 1,
-        speedInfo: normalizeSpeed(speedMb),
-        isRootHub,
-        isHub,
-        isThunderbolt,
-        connectedAt: Date.now()
-      };
-
-      devObj.bottleneck = analyzeBottleneck(devObj);
-      devices.push(devObj);
     }
-  } catch (err) {
-    console.warn('Windows USB scan error:', err.message);
+  } catch (psErr) {
+    console.warn('[Windows Engine] PowerShell CIM fallback error:', psErr.message);
   }
+
   return devices;
 }
 
@@ -473,6 +580,7 @@ function scanAllDevices() {
 const sseClients = new Set();
 let previousDeviceMap = new Map();
 let isFirstScan = true;
+let isChecking = false;
 
 function notifyHotplugClients(eventData) {
   const payload = `event: ${eventData.event}\ndata: ${JSON.stringify(eventData.data)}\n\n`;
@@ -488,6 +596,14 @@ function notifyHotplugClients(eventData) {
 function runDeviceCheck() {
   try {
     const currentScan = scanAllDevices();
+    if (!currentScan || !currentScan.devices) return;
+
+    // CRITICAL SAFETY SHIELD: Never treat a transient empty scan / timeout as an unplug storm!
+    if (currentScan.devices.length === 0 && previousDeviceMap.size > 0) {
+      console.warn('[Hotplug] Scan returned 0 devices while devices were previously detected; preserving current state.');
+      return;
+    }
+
     const currentMap = new Map(currentScan.devices.map(d => [d.id, d]));
 
     if (isFirstScan) {
@@ -511,7 +627,7 @@ function runDeviceCheck() {
       } else {
         // Check for speed changes or re-negotiation
         const prev = previousDeviceMap.get(id);
-        if (prev.speedInfo.numericMb !== dev.speedInfo.numericMb) {
+        if (prev && prev.speedInfo && dev.speedInfo && prev.speedInfo.numericMb !== dev.speedInfo.numericMb) {
           console.log(`[Hotplug] Speed Changed: ${dev.product} (${prev.speedInfo.label} -> ${dev.speedInfo.label})`);
           notifyHotplugClients({
             event: 'device-speed-changed',
@@ -544,12 +660,28 @@ function runDeviceCheck() {
 
     previousDeviceMap = currentMap;
   } catch (err) {
-    console.error('Error during runDeviceCheck:', err);
+    console.error('[Hotplug] Error during runDeviceCheck:', err.message);
   }
 }
 
-// Poll sysfs every 800ms for live sub-second hotplug detection
-setInterval(runDeviceCheck, 800);
+// Chained polling loop: waits 1.5s AFTER previous scan finishes, preventing overlapping process storms
+function startPollingLoop() {
+  async function poll() {
+    if (isChecking) return;
+    isChecking = true;
+    try {
+      runDeviceCheck();
+    } catch (e) {
+      console.error('[Hotplug] Loop error:', e);
+    } finally {
+      isChecking = false;
+      setTimeout(poll, 1500);
+    }
+  }
+  setTimeout(poll, 600);
+}
+
+startPollingLoop();
 
 // Heartbeat every 15s to keep SSE connections healthy
 setInterval(() => {
