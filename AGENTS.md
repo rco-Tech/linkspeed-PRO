@@ -38,7 +38,7 @@ git push origin vX.Y.Z
 
 ### 5. Verify GitHub Actions Release Workflow
 - The push triggers GitHub Actions runner jobs for:
-  - macOS (Apple Silicon DMG and ZIP)
+  - macOS (Apple Silicon arm64 & Intel x64 DMG and ZIP)
   - Linux (x64 AppImage and DEB)
   - Windows (NSIS 1-Click Setup Installer, Portable Executable, and `dist/latest.yml`)
 - Verify that the workflow runs and publishes the assets to:

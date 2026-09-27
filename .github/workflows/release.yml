@@ -28,7 +28,7 @@ jobs:
         run: npm ci || npm install
 
       - name: Build macOS ZIP packages
-        run: npx electron-builder --mac zip -p never
+        run: npx electron-builder --mac zip --arm64 --x64 -p never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
@@ -44,9 +44,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build macOS DMG packages
-        timeout-minutes: 4
+        timeout-minutes: 6
         continue-on-error: true
-        run: npx electron-builder --mac dmg -p never
+        run: npx electron-builder --mac dmg --arm64 --x64 -p never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
@@ -130,6 +130,8 @@ jobs:
         with:
           files: |
             dist/*.exe
+            dist/latest.yml
+          fail_on_unmatched_files: false
           draft: false
           prerelease: false
           generate_release_notes: true

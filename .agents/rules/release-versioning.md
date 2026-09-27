@@ -35,7 +35,7 @@ Whenever a new version of LinkSpeed Pro is prepared or released:
 4. **CI Release Workflow & Asset Verification**:
    - Pushing the tag triggers `.github/workflows/release.yml`.
    - The workflow builds and attaches all release assets to `https://github.com/rco-Tech/linkspeed-PRO/releases`:
-     - macOS ARM64 DMG & ZIP
+     - macOS Apple Silicon (`arm64`) & Intel (`x64`) DMG & ZIP
      - Linux AppImage & DEB
      - Windows Setup Installer (`.exe`), Portable Standalone (`.exe`), and `latest.yml` update manifest.
    - Verify that the release workflow executes and finishes successfully.
